@@ -1,0 +1,8 @@
+{
+  "name": "scriptzzz",
+  "version": "0.0.0",
+  "dependencies": {
+    "@codemirror/lang-javascript": "^6",
+    "codemirror": "^6"
+  }
+}

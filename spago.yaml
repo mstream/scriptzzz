@@ -1,0 +1,20 @@
+package:
+  name: scriptzzz
+  dependencies:
+    - aff-promise
+    - arrays
+    - console
+    - effect
+    - flame
+    - js-timers
+    - lazy
+    - maybe
+    - now
+    - prelude
+    - refs
+    - spec
+    - spec-node
+    - tuples
+    - uuid
+    - yoga-json
+workspace: {}

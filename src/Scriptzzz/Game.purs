@@ -2,7 +2,7 @@ module Scriptzzz.Game (Entity(..), State, UpdateError, update) where
 
 import Prelude
 
-import Control.Monad.RWS (RWS, execRWS)
+import Control.Monad.RWS (RWS)
 import Control.Monad.State (get)
 import Control.Monad.Writer (Writer)
 import Data.FoldableWithIndex (foldWithIndexM)
@@ -12,10 +12,13 @@ import Data.Map (Map)
 import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested (type (/\))
+import Data.Tuple.Nested ((/\))
 import Scriptzzz.Command (Commands, MoveToCommand, UnitCommands)
 import Scriptzzz.Engine (Id, Position)
 
-data Entity = EnergySource {position :: Position, quantity :: Int} | Worker {task :: Maybe String, position :: Position} 
+data Entity
+  = EnergySource { position ∷ Position, quantity ∷ Int }
+  | Worker { task ∷ Maybe String, position ∷ Position }
 
 derive instance Generic Entity _
 
@@ -28,25 +31,29 @@ newtype UpdateError = UpdateError String
 
 type UpdateMonad = Writer (List UpdateError)
 
-type Environment = {height :: Int, width :: Int}
+type Environment = { height ∷ Int, width ∷ Int }
 
 type Logs = List UpdateError
 
-type Game = RWS Environment Logs State 
+type Game = RWS Environment Logs State
 
-update :: Commands -> Environment -> State -> State /\ Logs
-update commands environment state = execRWS (moveTo commands.moveTo) environment state
+update ∷ Commands → Environment → State → State /\ Logs
+update commands environment state = state /\ mempty
 
-moveTo :: UnitCommands MoveToCommand -> Game Unit
+{-
+  execRWS (moveTo commands.moveTo)
+  environment
+  state
+-}
+
+moveTo ∷ UnitCommands MoveToCommand → Game Unit
 moveTo commands = do
-  state <- get
-  
-  let
-    f :: Id -> Unit -> MoveToCommand -> Game Unit 
-    f id _ {position} = do
-      pure unit
-  
-  foldWithIndexM f unit commands 
+  state ← get
 
-   
+  let
+    f ∷ Id → Unit → MoveToCommand → Game Unit
+    f id _ { position } = do
+      pure unit
+
+  foldWithIndexM f unit commands
 

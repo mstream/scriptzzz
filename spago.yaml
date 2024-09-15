@@ -17,4 +17,6 @@ package:
     - tuples
     - uuid
     - yoga-json
-workspace: {}
+workspace:
+  packageSet:
+    registry: 60.0.0

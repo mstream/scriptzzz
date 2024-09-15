@@ -3,12 +3,13 @@ module Test.Scriptzzz.Main where
 import Prelude
 
 import Data.Map (fromFoldable)
-import Data.Map as Map
 import Data.String.NonEmpty as NES
+import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple.Nested ((/\))
 import Effect (Effect)
 import Scriptzzz.Command (Commands, UnitCommands(..))
 import Scriptzzz.Engine (Id(..))
+import Scriptzzz.Sandbox (ExecutionResult(..))
 import Scriptzzz.Sandbox as Sandbox
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
@@ -29,18 +30,18 @@ spec = do
         unitId = Id $ NES.nes (Proxy :: _ "abc")
 
         commands :: Commands
-        commands = { harvest: UnitCommands Map.empty, moveTo: UnitCommands $ fromFoldable [ unitId /\ { position: { x: 1, y: 2 } } ] }
+        commands = { workers : { moveTo: UnitCommands $ fromFoldable [ unitId /\ { position: { x: 1, y: 2 } } ] }}
 
         actual :: String
         actual = JSON.writeJSON commands
 
         expected :: String
-        expected = """{"moveTo":{"abc":{"position":{"y":2,"x":1}}}}"""
+        expected = """{"workers":{"moveTo":{"abc":{"position":{"y":2,"x":1}}}}}"""
 
       actual `shouldEqual` expected
 
   describe "Sandbox/execJs" do
     it "returns valid output" do
-      outputString <- Sandbox.execJs 1000 "return 3"
-      outputString `shouldEqual` "3"
+      executionResult <- Sandbox.runProgram (Milliseconds 1000.0) "return 3"
+      executionResult `shouldEqual` Success 3
 

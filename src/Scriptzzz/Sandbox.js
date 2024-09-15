@@ -1,7 +1,6 @@
-export function execJsImpl(timeout, code) {
-  return () => new Promise((resolve, reject) => {
-    setTimeout(() => reject(Error(`Sandbox execution timeout: ${timeout}ms`)), timeout)
+export function execJsImpl(code) {
+  return () => new Promise((resolve) => {
     const fn = new Function(code)
-    resolve(JSON.stringify(fn()))
+    resolve(fn())
   })
 }

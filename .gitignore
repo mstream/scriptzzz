@@ -1,6 +1,7 @@
 .direnv
 .psc-ide-port
 .spago
+.spec-results
 dist/index.js
 node_modules
 output

@@ -1,4 +1,4 @@
-module Scriptzzz.Command (Commands, HarvestCommand, MoveToCommand, UnitCommands(..)) where
+module Scriptzzz.Command (Commands, MoveToCommand, UnitCommands(..)) where
 
 import Prelude
 
@@ -13,6 +13,12 @@ import Foreign (F, Foreign, ForeignError(..), fail)
 import Foreign.Index ((!))
 import Foreign.Keys (keys)
 import Yoga.JSON (class ReadForeign, class WriteForeign, readImpl, writeImpl)
+
+type Commands = {
+  workers :: {
+    moveTo :: UnitCommands MoveToCommand
+  } 
+}
 
 newtype UnitCommands a = UnitCommands (Map Id a)
 
@@ -43,8 +49,6 @@ instance WriteForeign a => WriteForeign (UnitCommands a) where
     accummulate :: Id -> Map String a -> a -> Map String a
     accummulate (Id nes) acc command = Map.insert (NES.toString nes) command acc
 
-type HarvestCommand = { position :: Position }
-type MoveToCommand = { position :: Position }
+type MoveToCommand = {position :: Position}
 
-type Commands = { harvest :: UnitCommands HarvestCommand, moveTo :: UnitCommands MoveToCommand }
 

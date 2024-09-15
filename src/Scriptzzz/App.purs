@@ -3,7 +3,9 @@ module Scriptzzz.App where
 import Prelude
 
 import Data.DateTime.Instant (Instant, diff)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Data.String.NonEmpty as NES
 import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Aff (Aff)
@@ -14,8 +16,12 @@ import Flame (Application, Subscription)
 import Scriptzzz.App.Message (Message(..))
 import Scriptzzz.App.Model (Model(..))
 import Scriptzzz.App.View (view)
-import Scriptzzz.Command (Commands)
-import Scriptzzz.Sandbox (ExecutionResult, runProgram)
+import Scriptzzz.Game (Entity(..))
+import Scriptzzz.Game as Game
+import Scriptzzz.Game.Command (Commands)
+import Scriptzzz.Game.Types (Id(..))
+import Scriptzzz.Sandbox (ExecutionResult(..), runProgram)
+import Type.Proxy (Proxy(..))
 
 app ∷ Application Model Message
 app = { init, subscribe, update, view }
@@ -75,19 +81,35 @@ handleScriptEvaluatedMessage
   → Model /\ Array (Aff (Maybe Message))
 handleScriptEvaluatedMessage { evaluatedTime, scheduledTime, value } =
   case _ of
-    Evaluating st →
-      if scheduledTime >= st.scheduledTime then
+    Evaluating state →
+      if scheduledTime >= state.scheduledTime then
         ( Idle $ Just
             { executionResult: value
             , executionTime: evaluatedTime
-            , source: st.source
+            , gameState: Map.singleton 
+                (Id $ NES.nes (Proxy :: _ "foo"))
+                (Worker {position : {x: 0, y: 0}, task: Nothing})
+            , source: state.source
             }
         ) /\ []
-      else Evaluating st /\ []
+      else Evaluating state /\ []
 
-    Idle st →
-      Idle st /\ []
-
+    Idle mbState →
+      case mbState of
+        Just state ->
+          case state.executionResult of
+            Success commands ->
+              let 
+                newGameState /\ logs = Game.update 
+                  commands 
+                  {height: 0, width: 0} 
+                  state.gameState
+              in (Idle $ Just $ state {gameState = newGameState}) /\ []
+            _ ->
+              (Idle $ Just state) /\ []
+          
+        Nothing -> 
+          Idle Nothing /\ []
     Typing st →
       Typing st /\ []
 

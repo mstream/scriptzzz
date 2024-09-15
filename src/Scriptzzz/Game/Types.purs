@@ -1,4 +1,4 @@
-module Scriptzzz.Engine (Id(..), Position) where
+module Scriptzzz.Game.Types (Id(..), Position) where
 
 import Prelude
 
@@ -16,5 +16,5 @@ derive newtype instance ReadForeign Id
 derive newtype instance Show Id
 derive newtype instance WriteForeign Id
 
-type Position = { x :: Int, y :: Int }
+type Position = { x ∷ Int, y ∷ Int }
 

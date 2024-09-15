@@ -11,10 +11,9 @@ import Data.List (List)
 import Data.Map (Map)
 import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
-import Data.Tuple.Nested (type (/\))
-import Data.Tuple.Nested ((/\))
-import Scriptzzz.Command (Commands, MoveToCommand, UnitCommands)
-import Scriptzzz.Engine (Id, Position)
+import Data.Tuple.Nested (type (/\), (/\))
+import Scriptzzz.Game.Command (Commands, MoveToCommand, UnitCommands)
+import Scriptzzz.Game.Types (Id, Position)
 
 data Entity
   = EnergySource { position ∷ Position, quantity ∷ Int }

@@ -1,7 +1,7 @@
 module Scriptzzz.App.Message (Message(..)) where
 
 import Data.DateTime.Instant (Instant)
-import Scriptzzz.Command (Commands)
+import Scriptzzz.Game.Command (Commands)
 import Scriptzzz.Sandbox (ExecutionResult)
 
 data Message = 

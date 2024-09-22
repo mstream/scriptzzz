@@ -11,18 +11,24 @@ import Scriptzzz.Game.Command (Commands, UnitCommands(..))
 import Scriptzzz.Game.Types (Id(..))
 import Scriptzzz.Sandbox (ExecutionResult(..))
 import Scriptzzz.Sandbox as Sandbox
+import Test.Scriptzzz.App.Controller.Handler.EditorUpdated as EditorUpdated
+import Test.Scriptzzz.App.Controller.Handler.ScriptEvaluated as ScriptEvaluated
+import Test.Scriptzzz.App.Controller.Handler.TimeUpdated as TimeUpdated
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
-import Test.Spec.Reporter (consoleReporter)
 import Test.Spec.Runner.Node (runSpecAndExitProcess)
+import Test.Utils (detailedErrorConsoleReporter)
 import Type.Proxy (Proxy(..))
 import Yoga.JSON as JSON
 
 main ∷ Effect Unit
-main = runSpecAndExitProcess [ consoleReporter ] spec
+main = runSpecAndExitProcess [ detailedErrorConsoleReporter ] spec
 
 spec ∷ Spec Unit
 spec = do
+  EditorUpdated.spec
+  ScriptEvaluated.spec
+  TimeUpdated.spec
   describe "Command" do
     it "codes JSON properly" do
       let

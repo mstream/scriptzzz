@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "dependencies": {
     "@codemirror/lang-javascript": "^6",
-    "codemirror": "^6"
+    "codemirror": "^6",
+    "pathfinding": "~0.4"
+  }, 
+  "devDependencies": {
+    "deep-object-diff": "^1",
+    "verror": "^1"
   }
 }

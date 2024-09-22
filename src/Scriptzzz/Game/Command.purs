@@ -16,12 +16,7 @@ import Foreign (F, Foreign, ForeignError(..), fail)
 import Foreign.Index ((!))
 import Foreign.Keys (keys)
 import Scriptzzz.Game.Types (Id(..), Position)
-import Yoga.JSON
-  ( class ReadForeign
-  , class WriteForeign
-  , readImpl
-  , writeImpl
-  )
+import Yoga.JSON (class ReadForeign, class WriteForeign, readImpl, writeImpl)
 
 type Commands =
   { workers ∷
@@ -31,6 +26,7 @@ type Commands =
 
 newtype UnitCommands a = UnitCommands (Map Id a)
 
+derive newtype instance Eq a ⇒ Eq (UnitCommands a)
 derive newtype instance Foldable UnitCommands
 derive newtype instance FoldableWithIndex Id UnitCommands
 derive newtype instance Show a ⇒ Show (UnitCommands a)

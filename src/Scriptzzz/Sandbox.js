@@ -1,6 +1,7 @@
-export function execJsImpl(code) {
-  return () => new Promise((resolve) => {
-    const fn = new Function(code)
-    resolve(fn())
-  })
+export function mockErrorEventImpl() {
+  return new Event('ErrorEventMock')
+}
+
+export function mockMessageEventImpl(data) {
+  return new MessageEvent('MessageEventMock', { data })
 }

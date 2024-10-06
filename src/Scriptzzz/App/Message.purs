@@ -1,33 +1,74 @@
-module Scriptzzz.App.Message (Message(..), EditorUpdatedMessage, ScriptEvaluatedMessage, TimeUpdatedMessage) where
+module Scriptzzz.App.Message
+  ( AnimationUpdatedPayload
+  , Body(..)
+  , CanvasInitializedPayload
+  , EditorUpdatedPayload
+  , Header
+  , Message(..)
+  , ScriptExecutedPayload
+  , SimulationStartRequestedPayload
+  , SimulationStopRequestedPayload
+  , TimeUpdatedPayload
+  , createWithoutTimestamp
+  , createWithTimestamp
+  ) where
 
-import Prelude
+import Scriptzzz.Prelude
 
-import Data.DateTime.Instant (Instant)
-import Data.Generic.Rep (class Generic)
-import Data.Show.Generic (genericShow)
-import Scriptzzz.App.Model.EditorState (Script)
-import Scriptzzz.Game.Command (Commands)
+import Scriptzzz.App.Model.AnimationState (GameStep)
+import Scriptzzz.Core (Script, Timestamp, timestamp)
+import Scriptzzz.Game as Game
 import Scriptzzz.Sandbox (ExecutionResult)
 
-data Message
-  = EditorUpdated EditorUpdatedMessage
-  | ScriptEvaluated ScriptEvaluatedMessage
-  | TimeUpdated Instant
-
-derive instance Generic Message _
-
-instance Show Message where
-  show = genericShow
-
-type EditorUpdatedMessage = { time ∷ Instant, value ∷ Script }
-
-type ScriptEvaluatedMessage =
-  { executionFinishTime ∷ Instant
-  , executionResult :: ExecutionResult Commands
-  , executionStartTime :: Instant
-  , scheduledTime ∷ Instant
+type Message =
+  { body ∷ Body
+  , header ∷ Header
   }
 
-type TimeUpdatedMessage = Instant
+type Header = { creationTime ∷ Maybe Timestamp }
 
+data Body
+  = AnimationUpdated AnimationUpdatedPayload
+  | CanvasInitialized CanvasInitializedPayload
+  | EditorUpdated EditorUpdatedPayload
+  | ScriptExecuted ScriptExecutedPayload
+  | SimulationStartRequested SimulationStartRequestedPayload
+  | SimulationStopRequested SimulationStopRequestedPayload
+  | TimeUpdated TimeUpdatedPayload
+
+derive instance Generic Body _
+
+instance Show Body where
+  show = genericShow
+
+type AnimationUpdatedPayload =
+  { executionFinishTime ∷ Timestamp
+  , executionStartTime ∷ Timestamp
+  , gameStep ∷ GameStep
+  }
+
+type CanvasInitializedPayload = Unit
+
+type EditorUpdatedPayload = Script
+
+type SimulationStartRequestedPayload = Unit
+
+type SimulationStopRequestedPayload = Unit
+
+type ScriptExecutedPayload =
+  { executionFinishTime ∷ Timestamp
+  , executionResult ∷ ExecutionResult Game.Commands
+  , executionStartTime ∷ Timestamp
+  }
+
+type TimeUpdatedPayload = Timestamp
+
+createWithoutTimestamp ∷ Body → Message
+createWithoutTimestamp body =
+  { body, header: { creationTime: Nothing } }
+
+createWithTimestamp ∷ Body → Effect Message
+createWithTimestamp body = do
+  creationTime ← timestamp <$> now
+  pure { body, header: { creationTime: Just creationTime } }
 

@@ -4,41 +4,22 @@ import Prelude
 
 import Data.Either (Either(..))
 import Data.Tuple.Nested ((/\))
-import Scriptzzz.App.Controller.Handler.Types (HandleMessage)
-import Scriptzzz.App.Message (EditorUpdatedMessage)
-import Scriptzzz.App.Model.EditorState (EditorState(..))
+import Scriptzzz.App.Command (Commands, CommandParameters)
+import Scriptzzz.App.Command as Cmd
+import Scriptzzz.App.Controller.Handler (HandleMessage)
+import Scriptzzz.App.Message (EditorUpdatedPayload)
+import Scriptzzz.App.Model (Model(..))
 
-handle ∷ HandleMessage EditorUpdatedMessage
-handle model { time, value } =
-  case model.editorState of
-    ExecutingScript executingScriptState →
-      Right $
-        model
-          { editorState = Typing
-              { currentScript: value
-              , lastUpdateTime: time
-              , previousIdleState:
-                  executingScriptState.previousIdleState
-              }
-          } /\ mempty
+type Handle = 
+  HandleMessage 
+    Model
+    { | Commands CommandParameters }
+    EditorUpdatedPayload
 
-    Idle idleState →
-      Right $
-        model
-          { editorState = Typing
-              { currentScript: value
-              , lastUpdateTime: time
-              , previousIdleState: idleState
-              }
-          } /\ mempty
+handle ∷ Handle
+handle model script = case model of
+  Editing editingModel ->
+    Right $ Editing editingModel {script = script} /\ Cmd.none 
 
-    Typing typingState →
-      Right $
-        model
-          { editorState =
-              Typing typingState
-                { currentScript = value
-                , lastUpdateTime = time
-                }
-          } /\ mempty
-
+  _ ->
+    Left "Not in editing mode."

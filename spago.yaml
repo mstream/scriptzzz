@@ -9,16 +9,22 @@ package:
     - js-timers
     - lazy
     - maybe
+    - naturals
     - now
     - prelude
     - refs
     - sized-vectors
-    - spec
-    - spec-node
     - strings-extra
     - tuples
     - uuid
+    - web-html
+    - web-workers
     - yoga-json
+  test:
+    main: Test.Scriptzzz.Main
+    dependencies:
+      - spec
+      - spec-node
 workspace:
   packageSet:
-    registry: 60.0.0
+    registry: 60.2.1

@@ -12,15 +12,16 @@ workspace:
           - js-timers
           - lazy
           - maybe
+          - naturals
           - now
           - prelude
           - refs
           - sized-vectors
-          - spec
-          - spec-node
           - strings-extra
           - tuples
           - uuid
+          - web-html
+          - web-workers
           - yoga-json
         build_plan:
           - aff
@@ -31,7 +32,6 @@ workspace:
           - argonaut-core
           - argonaut-generic
           - argonaut-traversals
-          - arraybuffer-types
           - arrays
           - avar
           - bifunctors
@@ -47,7 +47,6 @@ workspace:
           - enums
           - exceptions
           - exists
-          - exitcodes
           - flame
           - foldable-traversable
           - foreign
@@ -68,6 +67,92 @@ workspace:
           - lists
           - maybe
           - media-types
+          - mmorph
+          - naturals
+          - newtype
+          - nonempty
+          - now
+          - nullable
+          - numbers
+          - ordered-collections
+          - orders
+          - parallel
+          - partial
+          - pipes
+          - prelude
+          - profunctor
+          - profunctor-lenses
+          - quickcheck
+          - random
+          - record
+          - refs
+          - safe-coerce
+          - sized-vectors
+          - spec
+          - st
+          - strings
+          - strings-extra
+          - tailrec
+          - transformers
+          - tuples
+          - type-equality
+          - typelevel
+          - typelevel-prelude
+          - unfoldable
+          - unicode
+          - unsafe-coerce
+          - uuid
+          - variant
+          - web-dom
+          - web-events
+          - web-file
+          - web-html
+          - web-storage
+          - web-uievents
+          - web-workers
+          - yoga-json
+          - yoga-tree
+      test:
+        dependencies:
+          - spec
+          - spec-node
+        build_plan:
+          - aff
+          - ansi
+          - argonaut-codecs
+          - argonaut-core
+          - arraybuffer-types
+          - arrays
+          - avar
+          - bifunctors
+          - catenable-lists
+          - console
+          - const
+          - contravariant
+          - control
+          - datetime
+          - distributive
+          - effect
+          - either
+          - enums
+          - exceptions
+          - exists
+          - exitcodes
+          - foldable-traversable
+          - foreign
+          - foreign-object
+          - fork
+          - free
+          - functions
+          - functors
+          - gen
+          - identity
+          - integers
+          - invariant
+          - js-date
+          - lazy
+          - lists
+          - maybe
           - mmorph
           - newtype
           - node-buffer
@@ -90,43 +175,23 @@ workspace:
           - posix-types
           - prelude
           - profunctor
-          - profunctor-lenses
-          - quickcheck
-          - random
           - record
           - refs
           - safe-coerce
-          - sized-vectors
           - spec
           - spec-node
           - st
           - strings
-          - strings-extra
           - tailrec
           - transformers
           - tuples
           - type-equality
-          - typelevel
           - typelevel-prelude
           - unfoldable
-          - unicode
           - unsafe-coerce
-          - uuid
-          - variant
-          - web-dom
-          - web-events
-          - web-file
-          - web-html
-          - web-storage
-          - web-uievents
-          - yoga-json
-          - yoga-tree
-      test:
-        dependencies: []
-        build_plan: []
   package_set:
     address:
-      registry: 60.0.0
+      registry: 60.2.1
     compiler: ">=0.15.15 <0.16.0"
     content:
       abc-parser: 2.0.1
@@ -423,9 +488,11 @@ workspace:
       ocarina: 1.5.4
       oooooooooorrrrrrrmm-lib: 0.0.1
       open-folds: 6.4.0
+      open-foreign-generic: 11.0.3
       open-memoize: 6.2.0
       open-mkdirp-aff: 1.2.0
       open-pairing: 6.2.0
+      open-smolder: 12.0.2
       options: 7.0.0
       optparse: 5.0.1
       ordered-collections: 3.2.0
@@ -528,7 +595,7 @@ workspace:
       spec: 8.0.0
       spec-discovery: 8.3.0
       spec-mocha: 5.1.1
-      spec-node: 0.0.1
+      spec-node: 0.0.2
       spec-quickcheck: 5.0.2
       spec-reporter-xunit: 0.7.1
       splitmix: 2.1.0
@@ -1152,6 +1219,14 @@ packages:
       - free
       - functors
       - transformers
+  naturals:
+    type: registry
+    version: 3.0.0
+    integrity: sha256-xZqKMOP0vXTF5iVNdssrtfdaVgkE/aUtdChxCs6Zcu0=
+    dependencies:
+      - enums
+      - maybe
+      - prelude
   newtype:
     type: registry
     version: 5.0.0
@@ -1533,8 +1608,8 @@ packages:
       - tuples
   spec-node:
     type: registry
-    version: 0.0.1
-    integrity: sha256-RFcAi44CZWTfWF4xrZ25L13nd8syuCa9uC2iHZttZRY=
+    version: 0.0.2
+    integrity: sha256-2SZRy6QjokHms6+d150pShlbnOg+9XWYkrUUdX/QDjc=
     dependencies:
       - aff
       - argonaut-codecs
@@ -1758,6 +1833,17 @@ packages:
     integrity: sha256-5I+ut9JYno3wowti3vJGs1afKCm1ucppKuy+zhuSyss=
     dependencies:
       - web-html
+  web-workers:
+    type: registry
+    version: 1.1.0
+    integrity: sha256-H9cKidfGmZsVF8DuIOveAGZ3GBzJ3kXzfR0wQlzEfsE=
+    dependencies:
+      - effect
+      - foreign
+      - maybe
+      - prelude
+      - unsafe-coerce
+      - web-events
   yoga-json:
     type: registry
     version: 5.1.0

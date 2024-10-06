@@ -3,64 +3,82 @@ module Scriptzzz.App.View where
 import Prelude
 
 import Control.Monad.Reader (ask)
-import Effect.Now (now)
 import Flame (Html)
 import Flame.Html.Attribute as HA
 import Flame.Html.Element as HE
-import Scriptzzz.App.Message (Message(..))
-import Scriptzzz.App.Model (Model)
-import Scriptzzz.App.Model.EditorState (EditorState(..), Script(..))
-import Scriptzzz.Editor (createEditor)
-import Scriptzzz.Global (sendMessage)
+import Scriptzzz.App.Message as Msg
+import Scriptzzz.App.Model (Model(..))
+import Scriptzzz.App.View.Element (canvas, editor)
 
-view ∷ Model → Html Message
+view ∷ Model → Html Msg.Message
 view = do
-  canvasColumn ← canvasColumnView
-  editorColumn ← editorColumnView
-  debugColumn ← debugColumnView
+  canvasColumnContents ← viewCanvasColumnContents
+  editorColumnContents ← viewEditorColumnContents
+  debugColumnContents ← viewDebugColumnContents
   pure $ HE.section_
     [ HE.main "main"
         [ HE.div
             [ HA.class' "columns" ]
-            [ editorColumn, canvasColumn, debugColumn ]
-        ]
-    ]
-
-canvasColumnView ∷ Model → Html Message
-canvasColumnView = pure $ HE.div
-  [ HA.class' "column" ]
-  [ HE.text "<CANVAS>" ]
-
-editorColumnView ∷ Model → Html Message
-editorColumnView = do
-  model ← ask
-  pure $ HE.div
-    [ HA.class' "column" ]
-    [ HE.managed_
-        { createNode: const $ createEditor \updatedContents → do
-            currentTime ← now
-            sendMessage $ EditorUpdated
-              { time: currentTime, value: Script updatedContents }
-        , updateNode: \n _ _ → pure n
-        }
-        unit
-    , HE.div_
-        [ case model.editorState of
-            ExecutingScript _ →
-              HE.text "⧖" 
-            Idle { script, scriptExecutionOutcome } →
-              HE.div_
-                [ HE.text $ show scriptExecutionOutcome
+            ( HE.div [ HA.class' "column" ] <$>
+                [ editorColumnContents
+                , canvasColumnContents
+                , debugColumnContents
                 ]
-            Typing _ →
-              HE.text "⌨" 
+            )
         ]
     ]
 
-debugColumnView ∷ Model → Html Message
-debugColumnView = do
+viewCanvasColumnContents ∷ Model → Array (Html Msg.Message)
+viewCanvasColumnContents = do
   model ← ask
-  pure $ HE.div
-    [ HA.class' "column" ]
-    [ HE.text $ show model.gameState, HE.text $ show model.gameLogs ]
+  pure $ [ canvas ] <> case model of
+    CanvasInitializing →
+      []
+
+    Editing _ →
+      [ HE.button
+          [ HA.onClick
+              $ Msg.createWithoutTimestamp
+              $ Msg.SimulationStartRequested unit
+          ]
+          [ HE.text "Start" ]
+      ]
+
+    Simulating _ →
+      [ HE.button
+          [ HA.onClick
+              $ Msg.createWithoutTimestamp
+              $ Msg.SimulationStopRequested unit
+          ]
+          [ HE.text "Stop" ]
+      ]
+
+viewEditorColumnContents ∷ Model → Array (Html Msg.Message)
+viewEditorColumnContents = do
+  model ← ask
+
+  pure case model of
+    Editing editingModel →
+      [ editor true
+      , HE.text $ show editingModel.lastScriptExecution
+      ]
+
+    Simulating simulatingModel →
+      [ editor false
+      , HE.text $ show simulatingModel.editor.lastScriptExecution
+      ]
+    _ →
+      [ editor false, HE.div' [ HA.class' "is-skeleton" ] ]
+
+viewDebugColumnContents ∷ Model → Array (Html Msg.Message)
+viewDebugColumnContents = do
+  model ← ask
+  pure case model of
+    Simulating simulatingModel →
+      [ HE.text $ show simulatingModel.gameState
+      , HE.text $ show simulatingModel.gameLogs
+      ]
+
+    _ →
+      [ HE.div' [ HA.class' "is-skeleton" ] ]
 

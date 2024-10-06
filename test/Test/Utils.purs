@@ -2,6 +2,7 @@ module Test.Utils (checkEqual, detailedErrorConsoleReporter) where
 
 import Prelude
 
+import Data.String.NonEmpty as NES
 import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.State (class MonadState, get, put)
 import Control.Monad.Writer (class MonadWriter)
@@ -42,12 +43,12 @@ checkEqual
   ∷ ∀ a m
   . MonadEffect m
   ⇒ MonadThrow Error m
-  ⇒ String
+  ⇒ NES.NonEmptyString
   → a
   → a
   → m Unit
 checkEqual description actual expected = liftEffect $ checkEqualImpl
-  description
+  (NES.toString description)
   actual
   expected
 

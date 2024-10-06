@@ -1,87 +1,103 @@
 module Scriptzzz.App.Command
-  ( Command
-  , CommandEffect
+  ( CommandExecutionResult
+  , CommandExecutor
+  , CommandParameters
+  , CommandResultHandler
   , Commands
-  , EvaluateScriptParameters
-  , EvaluateScriptEffectResult
-  , LogParameters
+  , none
   , runCommands
   ) where
 
-import Prelude
+import Scriptzzz.Prelude
 
-import Data.DateTime.Instant (Instant)
-import Data.Maybe (Maybe)
-import Data.Time.Duration (Milliseconds(..))
-import Effect.Aff (Aff)
-import Effect.Class (liftEffect)
-import Effect.Class.Console as Console
-import Effect.Now (now)
-import Scriptzzz.App.Message (Message)
-import Scriptzzz.App.Model.EditorState (Script(..))
-import Scriptzzz.Sandbox (ExecutionResult, runProgram)
-import Yoga.JSON (class ReadForeign)
+import Data.Array as A
+import Scriptzzz.App.Model.AnimationState (GameStep)
+import Scriptzzz.Canvas.Animation (Animation)
+import Scriptzzz.Core (Script, Timestamp, timestamp)
+import Scriptzzz.Game as Game
+import Scriptzzz.Sandbox (ExecutionResult)
 
-type Commands a =
-  { evaluateScript ∷
-      Array
-        ( Command EvaluateScriptParameters
-            (EvaluateScriptEffectResult a)
-        )
-  , logDebug ∷ Array (Command LogParameters Unit)
-  , logError ∷ Array (Command LogParameters Unit)
-  }
-
-type Command r a =
-  { handleEffectResult ∷ a → Maybe Message
-  , parameters ∷ Record r
-  }
-
-type RunCommand r a = Record r → Aff a
-
-type EvaluateScriptParameters = (script ∷ Script)
-
-type EvaluateScriptEffectResult a =
-  { executionFinishTime ∷ Instant
-  , executionResult ∷ ExecutionResult a
-  , executionStartTime ∷ Instant
-  }
-
-type LogParameters = (message ∷ String)
-
-type CommandEffect = Aff (Maybe Message)
-
-runCommands ∷ ∀ a. ReadForeign a ⇒ Commands a → Array CommandEffect
-runCommands { evaluateScript, logDebug, logError } =
-  ( evaluateScript <#> \{ handleEffectResult, parameters } →
-      handleEffectResult <$> runEvaluateScript parameters
+type Commands ∷ (Type → Type → Type) → Row Type
+type Commands f =
+  ( executeScript ∷ f Script (ExecutionResult Game.Commands)
+  , logDebug ∷ f String Unit
+  , logError ∷ f String Unit
+  , updateAnimation ∷
+      f { animation ∷ Animation, gameStep ∷ GameStep }
+        { errors ∷ Array String }
   )
-    <>
-      ( logDebug <#> \{ handleEffectResult, parameters } →
-          handleEffectResult <$> runLogDebug parameters
-      )
-    <>
-      ( logError <#> \{ handleEffectResult, parameters } →
-          handleEffectResult <$> runLogError parameters
-      )
 
-runEvaluateScript
-  ∷ ∀ a
-  . ReadForeign a
-  ⇒ RunCommand EvaluateScriptParameters (EvaluateScriptEffectResult a)
-runEvaluateScript { script: (Script scriptCode) } = do
-  executionStartTime ← liftEffect now
-  executionResult ← runProgram (Milliseconds 1000.0) scriptCode
-  executionFinishTime ← liftEffect now
-  pure
-    { executionFinishTime
-    , executionResult
-    , executionStartTime
+type CommandParameters ∷ Type → Type → Type
+type CommandParameters params result = Maybe params
+
+type CommandResult ∷ Type → Type → Type
+type CommandResult params result = result
+
+type CommandExecutor ∷ (Type → Type) → Type → Type → Type
+type CommandExecutor m params result = params → m result
+
+type CommandExecutionResult err params result =
+  { commandExecutionResult ∷ err \/ result
+  , commandParameters ∷ params
+  , finishTime ∷ Timestamp
+  , startTime ∷ Timestamp
+  }
+
+type CommandResultHandler ∷ Type → Type → Type → Type → Type
+type CommandResultHandler err msg params result =
+  CommandExecutionResult err params result → Maybe msg
+
+none ∷ { | Commands CommandParameters }
+none =
+  { executeScript: Nothing
+  , logDebug: Nothing
+  , logError: Nothing
+  , updateAnimation: Nothing
+  }
+
+runCommands
+  ∷ ∀ err m msg
+  . MonadEffect m
+  ⇒ MonadError err m
+  ⇒ { | Commands (CommandExecutor m) }
+  → { | Commands (CommandResultHandler err msg) }
+  → { | Commands CommandParameters }
+  → Array (m (Maybe msg))
+runCommands executors handlers parameters = A.catMaybes
+  [ runCommand
+      executors.executeScript
+      handlers.executeScript
+      parameters.executeScript
+  , runCommand
+      executors.logDebug
+      handlers.logDebug
+      parameters.logDebug
+  , runCommand
+      executors.logError
+      handlers.logError
+      parameters.logError
+  , runCommand
+      executors.updateAnimation
+      handlers.updateAnimation
+      parameters.updateAnimation
+  ]
+
+runCommand
+  ∷ ∀ err m msg params result
+  . MonadEffect m
+  ⇒ MonadError err m
+  ⇒ CommandExecutor m params result
+  → CommandResultHandler err msg params result
+  → CommandParameters params result
+  → Maybe (m (Maybe msg))
+runCommand execute handleResult = map \params → do
+  startTime ← timestamp <$> liftEffect now
+  commandExecutionResult ← try $ execute params
+  finishTime ← timestamp <$> liftEffect now
+  pure $ handleResult
+    { commandExecutionResult
+    , commandParameters: params
+    , finishTime
+    , startTime
     }
-
-runLogDebug ∷ Record LogParameters → Aff Unit
-runLogDebug { message } = Console.debug message
-
-runLogError ∷ Record LogParameters → Aff Unit
-runLogError { message } = Console.error message
 

@@ -4,8 +4,9 @@
   "dependencies": {
     "@codemirror/lang-javascript": "^6",
     "codemirror": "^6",
-    "pathfinding": "~0.4"
-  }, 
+    "pathfinding": "~0.4",
+    "pixi.js": "^8"
+  },
   "devDependencies": {
     "deep-object-diff": "^1",
     "verror": "^1"

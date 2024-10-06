@@ -1,173 +1,211 @@
-module Scriptzzz.App.Controller (init, update) where
+module Scriptzzz.App.Controller (DebugLevel(..), init, update) where
 
-import Prelude
+import Scriptzzz.Prelude
 
-import Data.Either (Either(..))
-import Data.Either.Nested (type (\/))
-import Data.Map as Map
-import Data.Maybe (Maybe(..))
 import Data.String as S
-import Data.String.NonEmpty as NES
-import Data.Tuple.Nested (type (/\), (/\))
-import Data.Vec as Vec
-import Effect.Aff (Aff)
-import Scriptzzz.App.Command (Commands, runCommands)
+import Scriptzzz.App.Command
+  ( CommandExecutor
+  , CommandParameters
+  , CommandResultHandler
+  , Commands
+  )
+import Scriptzzz.App.Command as Cmd
+import Scriptzzz.App.Controller.Handler.AnimationUpdated as AnimationUpdated
+import Scriptzzz.App.Controller.Handler.CanvasInitialized as CanvasInitialized
 import Scriptzzz.App.Controller.Handler.EditorUpdated as EditorUpdated
-import Scriptzzz.App.Controller.Handler.ScriptEvaluated as ScriptEvaluated
+import Scriptzzz.App.Controller.Handler.ScriptExecuted as ScriptExecuted
+import Scriptzzz.App.Controller.Handler.SimulationStartRequested as SimulationStartRequested
+import Scriptzzz.App.Controller.Handler.SimulationStopRequested as SimulationStopRequested
 import Scriptzzz.App.Controller.Handler.TimeUpdated as TimeUpdated
-import Scriptzzz.App.Message (Message(..))
-import Scriptzzz.App.Model (Model)
-import Scriptzzz.App.Model.EditorState (EditorState(..), Script(..))
-import Scriptzzz.Game (Entity(..))
-import Scriptzzz.Game as Game
-import Scriptzzz.Game.Types (Id(..))
-import Scriptzzz.PathFinding (MapMatrix(..))
-import Type.Proxy (Proxy(..))
+import Scriptzzz.App.Message as Msg
+import Scriptzzz.App.Model (Model(..))
 
 data DebugLevel
-  = Full (Message → String) (Model → String)
-  | MessagesOnly (Message → String)
+  = Full (Model -> String)
+  | MessageNamesOnly
+  | MessagesOnly
   | None
 
-init ∷ Model /\ Array (Aff (Maybe Message))
-init = model /\ commands
-  where
-  model ∷ Model
-  model =
-    { editorState: Idle
-        { script: Script "", scriptExecutionOutcome: Nothing }
-    , gameLogs: []
-    , gameSettings:
-        { environment:
-            { mapMatrix: MapMatrix $ Vec.fill \_ → Vec.fill \_ → false }
-        , restartOnScriptChange: false
-        , stopOnError: false
-        }
-    , gameState: initialGameState
-    }
+init ∷ Model /\ Array (Aff (Maybe Msg.Message))
+init = CanvasInitializing /\ []
 
-  commands ∷ Array (Aff (Maybe Message))
-  commands = []
-
-update ∷ Model → Message → Model /\ Array (Aff (Maybe Message))
-update previousModel message =
+update
+  ∷ { | Commands (CommandExecutor Aff) }
+  -> DebugLevel
+  → Model
+  → Msg.Message
+  → Model /\ Array (Aff (Maybe Msg.Message))
+update commandExecutors debugLevel previousModel message =
   let
-    modelAndCommandsResult ∷ String \/ Model /\ Commands Game.Commands
-    modelAndCommandsResult = case message of
-      EditorUpdated payload →
+    modelAndCommandsResult
+      ∷ String \/ Model /\ { | Commands CommandParameters }
+    modelAndCommandsResult = case message.body of
+      Msg.AnimationUpdated payload →
+        AnimationUpdated.handle previousModel payload
+      Msg.CanvasInitialized payload →
+        CanvasInitialized.handle previousModel payload
+      Msg.EditorUpdated payload →
         EditorUpdated.handle previousModel payload
-      ScriptEvaluated payload →
-        ScriptEvaluated.handle previousModel payload
-      TimeUpdated payload →
+      Msg.ScriptExecuted payload →
+        ScriptExecuted.handle previousModel payload
+      Msg.SimulationStartRequested payload →
+        SimulationStartRequested.handle previousModel payload
+      Msg.SimulationStopRequested payload →
+        SimulationStopRequested.handle previousModel payload
+      Msg.TimeUpdated payload →
         TimeUpdated.handle previousModel payload
 
     nextModel /\ commands = handleErrors
-      $ map (addDebugCommands controllerDebugLevel)
+      $ map addDebugCommands 
       $ modelAndCommandsResult
 
   in
-    nextModel /\ runCommands commands
+    nextModel /\ Cmd.runCommands
+      commandExecutors
+      commandResultHandlers
+      commands
   where
-  addDebugCommands
-    ∷ DebugLevel
-    → Model /\ Commands Game.Commands
-    → Model /\ Commands Game.Commands
-  addDebugCommands debugLevel (nextModel /\ commands) =
+  addDebugCommands ::
+    Model /\ { | Commands CommandParameters }
+    → Model /\ { | Commands CommandParameters }
+  addDebugCommands (nextModel /\ commands) =
     case debugLevel of
-      Full showMessage showModel →
-        nextModel /\ commands
-          { logDebug = commands.logDebug <>
-              [ { handleEffectResult: const Nothing
-                , parameters:
-                    { message: S.joinWith "\n"
-                        [ "==="
-                        , "Previous state:"
-                        , showModel previousModel
-                        , "---"
-                        , "Message:"
-                        , showMessage message
-                        , "---"
-                        , "Next state:"
-                        , if nextModel == previousModel then
-                            "<NO_CHANGE>"
-                          else showModel nextModel
-                        , "==="
-                        ]
+      Full showModel →
+        let
+          debugInfo ∷ String
+          debugInfo = S.joinWith "\n"
+            [ "==="
+            , "Previous state:"
+            , showModel previousModel
+            , "---"
+            , "Message:"
+            , show message
+            , "---"
+            , "Next state:"
+            , if nextModel == previousModel then
+                "<NO_CHANGE>"
+              else showModel nextModel
+            , "==="
+            ]
 
-                    }
-                }
-              ]
-          }
+        in
+          nextModel /\ commands { logDebug = Just debugInfo }
 
-      MessagesOnly showMessage →
-        nextModel /\ commands
-          { logDebug = commands.logDebug <>
-              [ { handleEffectResult: const Nothing
-                , parameters:
-                    { message: "Message: " <> showMessage message }
-                }
-              ]
-          }
+      MessageNamesOnly →
+        let
+          messageName ∷ String
+          messageName = case message.body of
+            Msg.AnimationUpdated _ →
+              "Animation Updted"
+
+            Msg.CanvasInitialized _ →
+              "Canvas Initialized"
+
+            Msg.EditorUpdated _ →
+              "Editor Updted"
+
+            Msg.ScriptExecuted _ →
+              "Script Executed"
+
+            Msg.SimulationStartRequested _ →
+              "Simulation Start Requested"
+            
+            Msg.SimulationStopRequested _ →
+              "Simulation Stop Requested"
+
+            Msg.TimeUpdated _ →
+              "Time Updated"
+
+          debugInfo ∷ String
+          debugInfo = "Message: " <> messageName
+        in
+          nextModel /\ commands
+            { logDebug = Just debugInfo }
+
+      MessagesOnly →
+        let
+          headerText ∷ String
+          headerText = show message.header.creationTime
+
+          bodyText ∷ String
+          bodyText = show message.body
+
+          debugInfo ∷ String
+          debugInfo = "Message: " <> headerText <> " | " <> bodyText
+        in
+          nextModel /\ commands
+            { logDebug = Just debugInfo }
 
       None →
         nextModel /\ commands
 
   handleErrors
-    ∷ String \/ Model /\ Commands Game.Commands
-    → Model /\ Commands Game.Commands
+    ∷ String \/ Model /\ { | Commands CommandParameters }
+    → Model /\ { | Commands CommandParameters }
   handleErrors = case _ of
     Left errorMessage →
-      previousModel /\ (mempty ∷ Commands Game.Commands)
-        { logError =
-            [ { handleEffectResult: const Nothing
-              , parameters:
-                  { message: S.joinWith "\n"
-                      [ "!!!"
-                      , "Previous state:"
-                      , show previousModel
-                      , "---"
-                      , "Error Message:"
-                      , show errorMessage
-                      , "---"
-                      , "Next state:"
-                      , "<NO_CHANGE>"
-                      , "!!!"
-                      ]
-                  }
-              }
-            ]
-        }
+      let
+        errorInfo ∷ String
+        errorInfo = S.joinWith "\n"
+          [ "!!!"
+          , "Previous state:"
+          , show previousModel
+          , "---"
+          , "Error Message:"
+          , show errorMessage
+          , "---"
+          , "Next state:"
+          , "<NO_CHANGE>"
+          , "!!!"
+          ]
+
+      in
+        previousModel /\ Cmd.none { logError = Just errorInfo }
 
     Right nextModelAndCommands →
       nextModelAndCommands
 
-initialGameState ∷ Game.State
-initialGameState = Game.State $ Map.singleton
-  (Id $ NES.nes (Proxy ∷ _ "foo"))
-  (Worker { position: { x: 15, y: 15 }, task: Nothing })
+commandResultHandlers
+  ∷ { | Commands (CommandResultHandler Error Msg.Message) }
+commandResultHandlers =
+  { executeScript: withCreationTime
+      \{ commandExecutionResult, finishTime, startTime } →
+        case commandExecutionResult of
+          Left _ →
+            Nothing
 
-controllerDebugLevel ∷ DebugLevel
-controllerDebugLevel = Full showMessage showModel
+          Right result →
+            Just $ Msg.ScriptExecuted
+              { executionFinishTime: finishTime
+              , executionResult: result
+              , executionStartTime: startTime
+              }
+  , logDebug: const Nothing
+  , logError: const Nothing
+  , updateAnimation: withCreationTime
+      \{ commandExecutionResult
+       , commandParameters
+       , finishTime
+       , startTime
+       } →
+        case commandExecutionResult of
+          Left _ →
+            Nothing
+
+          Right result →
+            Just $ Msg.AnimationUpdated
+              { executionFinishTime: finishTime
+              , executionStartTime: startTime
+              , gameStep: commandParameters.gameStep
+              }
+
+  }
   where
-  showMessage ∷ Message → String
-  showMessage = case _ of
-    EditorUpdated _ →
-      "Editor Updted"
-
-    ScriptEvaluated _ →
-      "Script Evaluated"
-
-    TimeUpdated _ →
-      "Time Updated"
-
-  showModel ∷ Model → String
-  showModel = _.editorState >>> case _ of
-    ExecutingScript _ →
-      "Executing Script"
-
-    Idle _ →
-      "Idle"
-
-    Typing _ →
-      "Typing"
+  withCreationTime
+    ∷ ∀ err params result
+    . (Cmd.CommandExecutionResult err params result → Maybe Msg.Body)
+    → CommandResultHandler err Msg.Message params result
+  withCreationTime toBody args = do
+    body ← toBody args
+    pure $ { body, header: { creationTime: Just args.finishTime } }
 

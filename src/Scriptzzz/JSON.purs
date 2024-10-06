@@ -1,12 +1,18 @@
-module Scriptzzz.JSON (writeForeignTaggedSum) where
+module Scriptzzz.JSON (readForeignTaggedSum,writeForeignTaggedSum) where
 
-import Data.Generic.Rep (class Generic)
+import Scriptzzz.Prelude
+
 import Data.String.Extra (snakeCase)
-import Foreign (Foreign)
-import Yoga.JSON.Generics
-  ( class WriteGenericTaggedSumRep
-  , genericWriteForeignTaggedSum
-  )
+import Yoga.JSON.Generics (class ReadGenericTaggedSumRep, class WriteGenericTaggedSumRep, genericReadForeignTaggedSum, genericWriteForeignTaggedSum)
+
+readForeignTaggedSum
+  ∷ ∀ a rep
+  . Generic a rep
+  ⇒ ReadGenericTaggedSumRep rep
+  ⇒ Foreign
+  → F a
+readForeignTaggedSum = genericReadForeignTaggedSum
+  { typeTag: "kind", valueTag: "data", toConstructorName: snakeCase }
 
 writeForeignTaggedSum
   ∷ ∀ a rep
@@ -16,4 +22,5 @@ writeForeignTaggedSum
   → Foreign
 writeForeignTaggedSum = genericWriteForeignTaggedSum
   { typeTag: "kind", valueTag: "data", toConstructorName: snakeCase }
+
 

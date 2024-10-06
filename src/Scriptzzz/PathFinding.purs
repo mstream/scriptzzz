@@ -1,60 +1,140 @@
-module Scriptzzz.PathFinding (MapMatrix(..), findPath) where
+module Scriptzzz.PathFinding
+  ( module Map
+  , Direction(..)
+  , Path
+  , buildPath
+  , findPath
+  , followPath
+  ) where
 
-import Prelude
+import Scriptzzz.Prelude
 
-import Data.String as S
-import Control.Monad.Except (runExcept)
-import Data.Array as Array
-import Data.Either.Nested (type (\/))
-import Data.Traversable (traverse)
+import Data.Array as A
+import Data.List as L
+import Data.List.NonEmpty as NEL
 import Data.Typelevel.Num (class Nat)
-import Data.Vec (Vec, toArray)
-import Foreign (F, Foreign, ForeignError(..), MultipleErrors, fail)
+import Foreign (F, ForeignError(..), MultipleErrors, fail)
 import Foreign as F
-import Scriptzzz.Game.Types (Position)
-import Yoga.JSON (class WriteForeign, writeImpl)
+import Scriptzzz.Core (Position)
+import Scriptzzz.PathFinding.Map
+  ( ObstacleMatrix
+  , emptyObstacleMatrix
+  , obstacleMatrixToArray
+  ) as Map
+import Yoga.JSON as JSON
 
-newtype MapMatrix :: forall k1 k2. k1 -> k2 -> Type
-newtype MapMatrix x y = MapMatrix (Vec x (Vec y Boolean))
+data Direction
+  = N
+  | NE
+  | E
+  | SE
+  | S
+  | SW
+  | W
+  | NW
 
-derive newtype instance (Nat x, Nat y) => Eq (MapMatrix x y)
+derive instance Generic Direction _
 
-instance (Nat x, Nat y) => Show (MapMatrix x y) where
-  show = S.joinWith "\n" <<< map renderRow <<< matrixToArray 
-    where
-    renderRow :: Array Boolean -> String
-    renderRow = S.joinWith "" <<< map (if _ then "#" else " ")
+instance Arbitrary Direction where
+  arbitrary = genericArbitrary
 
-instance (Nat x, Nat y) => WriteForeign (MapMatrix x y) where
-  writeImpl ∷  MapMatrix x y → Foreign
-  writeImpl = writeImpl <<< matrixToArray
+newtype Path = Path (List Position)
 
-foreign import findPathImpl ∷ Array (Array Int) -> Position -> Position -> Foreign
+derive newtype instance Eq Path
+derive newtype instance Show Path
 
-matrixToArray :: forall x y. Nat x => Nat y => MapMatrix x y -> Array (Array Boolean)
-matrixToArray (MapMatrix rows) = toArray <$> toArray rows  
+instance Arbitrary Path where
+  arbitrary = do
+    initialPosition ← arbitrary
+    directions ← arbitrary
+    pure $ buildPath initialPosition directions
 
-findPath :: forall x y. Nat x => Nat y => MapMatrix x y -> Position -> Position -> MultipleErrors \/ Array Position
-findPath mapMatrix sourcePosition targetPosition = 
-  runExcept $ parseSteps $ findPathImpl (convertMapMatrix mapMatrix) sourcePosition targetPosition 
+instance JSON.WriteForeign Path where
+  writeImpl (Path positions) = JSON.write $ A.fromFoldable positions
+
+foreign import findPathImpl
+  ∷ Array (Array Int) → Position → Position → Foreign
+
+buildPath ∷ Position → Array Direction → Path
+buildPath initialPosition = Path
+  <<< NEL.toList
+  <<< NEL.reverse
+  <<< foldl reduceDirections (NEL.singleton initialPosition)
   where
-  convertMapMatrix :: MapMatrix x y -> Array (Array Int)
-  convertMapMatrix  = map (map if _ then 1 else 0) <<< matrixToArray
+  reduceDirections
+    ∷ NonEmptyList Position → Direction → NonEmptyList Position
+  reduceDirections acc direction =
+    let
+      { head, tail } = NEL.uncons acc
 
-  parseSteps :: Foreign -> F (Array Position)
+    in
+      case direction of
+        N →
+          NEL.cons' head { y = head.y - 1 } (head : tail)
+
+        NE →
+          NEL.cons' { x: head.x + 1, y: head.y - 1 } (head : tail)
+
+        E →
+          NEL.cons' head { x = head.x + 1 } (head : tail)
+
+        SE →
+          NEL.cons' { x: head.x + 1, y: head.y + 1 } (head : tail)
+
+        S →
+          NEL.cons' head { y = head.y + 1 } (head : tail)
+
+        SW →
+          NEL.cons' { x: head.x - 1, y: head.y + 1 } (head : tail)
+
+        W →
+          NEL.cons' head { x = head.x - 1 } (head : tail)
+
+        NW →
+          NEL.cons' { x: head.x - 1, y: head.y - 1 } (head : tail)
+
+followPath ∷ Path → Maybe (Position /\ Path)
+followPath (Path positions) = case positions of
+  Nil →
+    Nothing
+
+  nextPosition : otherPositions →
+    Just $ nextPosition /\ Path otherPositions
+
+findPath
+  ∷ ∀ x y
+  . Nat x
+  ⇒ Nat y
+  ⇒ Map.ObstacleMatrix x y
+  → Position
+  → Position
+  → MultipleErrors \/ Path
+findPath obstacleMatrix sourcePosition targetPosition =
+  map (Path <<< L.fromFoldable)
+    $ runExcept
+    $ parseSteps
+    $ findPathImpl
+        (convertObstacleMatrix obstacleMatrix)
+        sourcePosition
+        targetPosition
+  where
+  convertObstacleMatrix ∷ Map.ObstacleMatrix x y → Array (Array Int)
+  convertObstacleMatrix = map (map if _ then 1 else 0) <<<
+    Map.obstacleMatrixToArray
+
+  parseSteps ∷ Foreign → F (Array Position)
   parseSteps value = do
-    stepTuples <- F.readArray value
-    traverse (\tuple -> F.readArray tuple >>= parsePosition) stepTuples
+    stepTuples ← F.readArray value
+    traverse (\tuple → F.readArray tuple >>= parsePosition) stepTuples
     where
-    parsePosition :: Array Foreign -> F Position
+    parsePosition ∷ Array Foreign → F Position
     parsePosition = case _ of
-      [xValue, yValue] -> do
-        x <- F.readInt xValue
-        y <- F.readInt yValue
-        pure {x, y}
-      xs -> 
-        fail $ ForeignError $ "Step tuple has a length different from 2: " <> show (Array.length xs)  
-      
-    
-     
+      [ xValue, yValue ] → do
+        x ← F.readInt xValue
+        y ← F.readInt yValue
+        pure { x, y }
+      xs →
+        fail $ ForeignError
+          $ "Step tuple has a length different from 2: "
+          <> show (A.length xs)
 

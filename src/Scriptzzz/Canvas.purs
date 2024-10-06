@@ -4,32 +4,26 @@ module Scriptzzz.Canvas
   , updateEntityPosition
   ) where
 
-import Prelude
+import Scriptzzz.Prelude
 
-import Control.Promise (Promise, toAffE)
-import Data.Function.Uncurried (Fn2, runFn2)
-import Data.String.NonEmpty as NES
-import Effect (Effect)
-import Effect.Aff (Aff)
-import Effect.Class (liftEffect)
-import Scriptzzz.Game.Types (Id(..), Position)
+import Scriptzzz.Core (Id, Position)
+import Web.DOM (Node)
 
-foreign import createCanvasImpl ∷ String → Effect (Promise Unit)
-foreign import createEntityImpl ∷ Fn2 String Position (Effect Unit)
+foreign import createCanvasImpl ∷ Effect Unit → Effect Node
+foreign import createEntityImpl
+  ∷ String → String → Position → Effect Unit
+
 foreign import updateEntityPositionImpl
-  ∷ Fn2 String Position (Effect Unit)
+  ∷ String → Position → Effect Unit
 
-createCanvas ∷ String → Aff Unit
-createCanvas = toAffE <<< createCanvasImpl
+createCanvas ∷ Effect Unit → Effect Node
+createCanvas = createCanvasImpl
 
-createEntity ∷ Id → Position → Aff Unit
-createEntity (Id id) position = liftEffect $ runFn2 createEntityImpl
-  (NES.toString id)
-  position
+createEntity ∷ Id → String → Position → Aff Unit
+createEntity id entityType position = liftEffect
+  $ createEntityImpl (show id) entityType position
 
 updateEntityPosition ∷ Id → Position → Aff Unit
-updateEntityPosition (Id id) position = liftEffect $ runFn2
-  updateEntityPositionImpl
-  (NES.toString id)
-  position
+updateEntityPosition id position = liftEffect
+  $ updateEntityPositionImpl (show id) position
 

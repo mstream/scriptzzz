@@ -7,7 +7,7 @@ module Scriptzzz.Game.Command
 import Scriptzzz.Prelude
 
 import Data.Map as M
-import Foreign (F, ForeignError(..), fail)
+import Foreign (ForeignError(..), fail)
 import Foreign.Index ((!))
 import Foreign.Keys (keys)
 import Scriptzzz.Core (Id, Position, idToString, parseId)
@@ -18,9 +18,10 @@ import Yoga.JSON
   , writeImpl
   )
 
-type Commands =
+type Commands :: forall k1 k2. k1 -> k2 -> Type
+type Commands w h =
   { workers ∷
-      { moveTo ∷ UnitCommands MoveToCommand
+      { moveTo ∷ UnitCommands (MoveToCommand w h)
       }
   }
 
@@ -64,5 +65,6 @@ instance WriteForeign a ⇒ WriteForeign (UnitCommands a) where
       command
       acc
 
-type MoveToCommand = { position ∷ Position }
+type MoveToCommand :: forall k1 k2. k1 -> k2 -> Type
+type MoveToCommand w h = { position ∷ Position w h }
 

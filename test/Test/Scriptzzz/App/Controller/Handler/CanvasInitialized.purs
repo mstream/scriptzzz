@@ -4,34 +4,28 @@ import Scriptzzz.Prelude
 
 import Control.Monad.Gen (suchThat)
 import Data.String.NonEmpty as NES
-import Scriptzzz.App.Command (CommandParameters, Commands)
+import Data.Typelevel.Num (D4)
 import Scriptzzz.App.Command as Cmd
 import Scriptzzz.App.Controller.Handler.CanvasInitialized as CanvasInitialized
 import Scriptzzz.App.Message (CanvasInitializedPayload)
 import Scriptzzz.App.Model (Model(..))
-import Test.Flame.Update.Handler
-  ( ConfigM
-  , runFailureScenario
-  , runSuccessScenario
-  )
 import Test.Flame.Update.Handler as TH
 import Test.Flame.Update.Handler.Scriptzzz
-  ( HandlerFailureScenarioConfig
-  , HandlerSuccessScenarioConfig
-  , ModelAssertionConfig
+  ( ModelAssertionConfig
+  , RunFailureScenario
+  , RunSuccessScenario
   )
 import Test.QuickCheck (arbitrary)
-import Test.QuickCheck.Gen (Gen)
 import Test.Spec (Spec, describe, it)
 
 spec ∷ Spec Unit
 spec = do
   describe "Scriptzz.App.Controller.Handler.CanvasInitialized" do
     it "fails when in a state different than CanvasInitializing"
-      $ runCanvasInitializedFailureScenario 10 do
+      $ runFailureScenario 10 do
           pure do
-            previousModel ← arbitrary `suchThat` case _ of
-              CanvasInitializing →
+            previousModel ∷ Model D4 D4 ← arbitrary `suchThat` case _ of
+              CanvasInitializing _ →
                 false
 
               _ → true
@@ -51,11 +45,13 @@ spec = do
               }
 
     it "switches from CanvasInitializing to Editing state"
-      $ runCanvasInitializedSuccessScenario 1 do
+      $ runSuccessScenario 1 do
           pure do
+            gameEnvironment ← arbitrary
+
             let
-              previousModel ∷ Model
-              previousModel = CanvasInitializing
+              previousModel ∷ Model D4 D4
+              previousModel = CanvasInitializing gameEnvironment
 
               messagePayload ∷ CanvasInitializedPayload
               messagePayload = unit
@@ -63,7 +59,7 @@ spec = do
               modelExpectations
                 ∷ ∀ m
                 . TH.Assert m
-                ⇒ MonadAsk ModelAssertionConfig m
+                ⇒ MonadAsk (ModelAssertionConfig D4 D4) m
                 ⇒ m Unit
               modelExpectations = do
                 { nextModel } ← ask
@@ -82,7 +78,7 @@ spec = do
                   _ →
                     TH.fail $ NES.nes (Proxy ∷ _ "not in editing mode")
 
-              expectedCommands ∷ { | Commands CommandParameters }
+              expectedCommands ∷ Cmd.Commands D4 D4
               expectedCommands = Cmd.none
 
             pure
@@ -92,19 +88,17 @@ spec = do
               , previousModel
               }
 
-runCanvasInitializedFailureScenario
-  ∷ Int
-  → ConfigM
-      (Gen (HandlerFailureScenarioConfig CanvasInitializedPayload))
-  → Aff Unit
-runCanvasInitializedFailureScenario =
-  runFailureScenario CanvasInitialized.handle
+runFailureScenario
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ RunFailureScenario w h CanvasInitializedPayload
+runFailureScenario = TH.makeRunFailureScenario CanvasInitialized.handle
 
-runCanvasInitializedSuccessScenario
-  ∷ Int
-  → ConfigM
-      (Gen (HandlerSuccessScenarioConfig CanvasInitializedPayload))
-  → Aff Unit
-runCanvasInitializedSuccessScenario =
-  runSuccessScenario CanvasInitialized.handle
+runSuccessScenario
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ RunSuccessScenario w h CanvasInitializedPayload
+runSuccessScenario = TH.makeRunSuccessScenario CanvasInitialized.handle
 

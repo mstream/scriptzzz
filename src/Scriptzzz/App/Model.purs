@@ -12,40 +12,43 @@ import Test.QuickCheck (class Arbitrary)
 import Test.QuickCheck.Arbitrary (genericArbitrary)
 import Yoga.JSON (class WriteForeign)
 
-data Model
-  = CanvasInitializing
-  | Editing EditingModel
-  | Simulating SimulatingModel
+data Model :: forall k1 k2. k1 -> k2 -> Type
+data Model w h
+  = CanvasInitializing (Game.Environment w h)
+  | Editing (EditingModel w h)
+  | Simulating (SimulatingModel w h)
 
-derive instance Generic Model _
+derive instance Generic (Model w h) _
 
-instance Arbitrary Model where
+instance (Pos h, Pos w) => Arbitrary (Model w h) where
   arbitrary = genericArbitrary
 
-instance WriteForeign Model where
+instance (Pos h, Pos w) => WriteForeign (Model w h) where
   writeImpl = writeForeignTaggedSum
 
-instance Eq Model where
+instance (Pos h, Pos w) => Eq (Model w h) where
   eq = genericEq
 
-instance Show Model where
+instance (Pos h, Pos w) => Show (Model w h) where
   show = genericShow
 
-type EditingModel =
-  { gameSettings ∷ GameSettings
+type EditingModel :: forall k1 k2. k1 -> k2 -> Type
+type EditingModel w h =
+  { gameSettings ∷ GameSettings w h
   , lastScriptExecution ∷
       Maybe
         { finishTime ∷ Timestamp
-        , result ∷ ExecutionResult Game.Commands
+        , result ∷ ExecutionResult (Game.Commands w h)
         , startTime ∷ Timestamp
         }
   , script ∷ Script
   }
 
-type SimulatingModel =
+type SimulatingModel :: forall k1 k2. k1 -> k2 -> Type
+type SimulatingModel w h =
   { animationState ∷ AnimationState
-  , editor ∷ EditingModel
+  , editor ∷ EditingModel w h
   , gameLogs ∷ Game.Logs
-  , gameState ∷ Game.State
+  , gameState ∷ Game.State w h
   }
 

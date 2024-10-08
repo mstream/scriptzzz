@@ -3,33 +3,31 @@ module Scriptzzz.App.Controller.Handler.CanvasInitialized (handle) where
 import Scriptzzz.Prelude
 
 import Data.Map as M
-import Scriptzzz.App.Command (CommandParameters, Commands)
 import Scriptzzz.App.Command as Cmd
+import Scriptzzz.App.Controller.Handler (HandleScriptzzzMessage)
 import Scriptzzz.App.Controller.Handler as Handler
-import Scriptzzz.App.Message (CanvasInitializedPayload)
+import Scriptzzz.App.Message as Msg
 import Scriptzzz.App.Model (Model(..))
 import Scriptzzz.Canvas.Animation as Animation
-import Scriptzzz.Core (makeId)
+import Scriptzzz.Core (Position, makeId)
 import Scriptzzz.Game (Entity(..))
 import Scriptzzz.Game as Game
-import Scriptzzz.PathFinding as PF
+import Test.QuickCheck (mkSeed)
+import Test.QuickCheck.Gen (evalGen)
 import Type.Proxy (Proxy(..))
 
-type Handle =
-  Handler.HandleMessage
-    Model
-    { | Commands CommandParameters }
-    CanvasInitializedPayload
-
-handle ∷ Handle
+handle
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ HandleScriptzzzMessage w h Msg.CanvasInitializedPayload
 handle model _ = case model of
-  CanvasInitializing →
+  CanvasInitializing gameEnvironment →
     let
-      newModel ∷ Model
+      newModel ∷ Model w h
       newModel = Editing
         { gameSettings:
-            { environment:
-                { obstacleMatrix: PF.emptyObstacleMatrix }
+            { environment: gameEnvironment
             , initialState: initialGameState
             , restartOnScriptChange: false
             , stopOnError: false
@@ -39,7 +37,7 @@ handle model _ = case model of
         , script: mempty
         }
 
-      commands ∷ { | Commands CommandParameters }
+      commands ∷ Cmd.Commands w h
       commands = Cmd.none
 
     in
@@ -48,8 +46,18 @@ handle model _ = case model of
   _ →
     Handler.failure "Canvas has already been initialized."
 
-initialGameState ∷ Game.State
-initialGameState = Game.State $ M.singleton
-  (makeId (Proxy ∷ _ "foo"))
-  (Worker { position: { x: 15, y: 15 }, task: Nothing })
+initialGameState ∷ ∀ h w. Pos h ⇒ Pos w ⇒ Game.State w h
+initialGameState =
+  let
+    position ∷ Position w h
+    position = evalGen arbitrary { newSeed: mkSeed 0, size: one }
 
+    worker ∷ Game.Entity w h
+    worker = Worker
+      { position
+      , task: Nothing
+      }
+  in
+    Game.State $ M.singleton
+      (makeId (Proxy ∷ _ "foo"))
+      worker

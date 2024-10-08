@@ -20,25 +20,27 @@ import Scriptzzz.Core (Script, Timestamp, timestamp)
 import Scriptzzz.Game as Game
 import Scriptzzz.Sandbox (ExecutionResult)
 
-type Message =
-  { body ∷ Body
+type Message ∷ ∀ k1 k2. k1 → k2 → Type
+type Message w h =
+  { body ∷ Body w h
   , header ∷ Header
   }
 
 type Header = { creationTime ∷ Maybe Timestamp }
 
-data Body
+data Body ∷ ∀ k1 k2. k1 → k2 → Type
+data Body w h
   = AnimationUpdated AnimationUpdatedPayload
   | CanvasInitialized CanvasInitializedPayload
   | EditorUpdated EditorUpdatedPayload
-  | ScriptExecuted ScriptExecutedPayload
+  | ScriptExecuted (ScriptExecutedPayload w h)
   | SimulationStartRequested SimulationStartRequestedPayload
   | SimulationStopRequested SimulationStopRequestedPayload
   | TimeUpdated TimeUpdatedPayload
 
-derive instance Generic Body _
+derive instance Generic (Body w h) _
 
-instance Show Body where
+instance Show (Body w h) where
   show = genericShow
 
 type AnimationUpdatedPayload =
@@ -55,19 +57,21 @@ type SimulationStartRequestedPayload = Unit
 
 type SimulationStopRequestedPayload = Unit
 
-type ScriptExecutedPayload =
+type ScriptExecutedPayload ∷ ∀ k1 k2. k1 → k2 → Type
+type ScriptExecutedPayload w h =
   { executionFinishTime ∷ Timestamp
-  , executionResult ∷ ExecutionResult Game.Commands
+  , executionResult ∷ ExecutionResult (Game.Commands w h)
   , executionStartTime ∷ Timestamp
   }
 
 type TimeUpdatedPayload = Timestamp
 
-createWithoutTimestamp ∷ Body → Message
+createWithoutTimestamp ∷ ∀ h w. Pos h ⇒ Pos w ⇒ Body w h → Message w h
 createWithoutTimestamp body =
   { body, header: { creationTime: Nothing } }
 
-createWithTimestamp ∷ Body → Effect Message
+createWithTimestamp
+  ∷ ∀ h w. Pos h ⇒ Pos w ⇒ Body w h → Effect (Message w h)
 createWithTimestamp body = do
   creationTime ← timestamp <$> now
   pure { body, header: { creationTime: Just creationTime } }

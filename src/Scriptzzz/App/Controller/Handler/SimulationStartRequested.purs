@@ -4,8 +4,8 @@ module Scriptzzz.App.Controller.Handler.SimulationStartRequested
 
 import Scriptzzz.Prelude
 
-import Scriptzzz.App.Command (CommandParameters, Commands)
 import Scriptzzz.App.Command as Cmd
+import Scriptzzz.App.Controller.Handler (HandleScriptzzzMessage)
 import Scriptzzz.App.Controller.Handler as Handler
 import Scriptzzz.App.Message as Msg
 import Scriptzzz.App.Model (Model(..))
@@ -16,20 +16,18 @@ import Scriptzzz.App.Model.AnimationState
 import Scriptzzz.Canvas.Animation as Animation
 import Scriptzzz.Game as Game
 
-type Handle =
-  Handler.HandleMessage
-    Model
-    { | Commands CommandParameters }
-    Msg.SimulationStartRequestedPayload
-
-handle ∷ Handle
+handle
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ HandleScriptzzzMessage w h Msg.SimulationStopRequestedPayload
 handle model _ = case model of
   Editing editingModel →
     let
-      gameState ∷ Game.State
+      gameState ∷ Game.State w h
       gameState = editingModel.gameSettings.initialState
 
-      newModel ∷ Model
+      newModel ∷ Model w h
       newModel = Simulating
         { animationState: Uninitialized
         , editor: editingModel
@@ -37,14 +35,12 @@ handle model _ = case model of
         , gameState
         }
 
-      commands ∷ { | Commands CommandParameters }
-      commands = Cmd.none
-        { updateAnimation = Just
-            { animation: Animation.animate
-                Game.blankState
-                gameState
-            , gameStep: initialGameStep
-            }
+      commands ∷ Cmd.Commands w h
+      commands = Cmd.none `Cmd.withUpdateAnimation`
+        { animation: Animation.animate
+            Game.blankState
+            gameState
+        , gameStep: initialGameStep
         }
 
     in

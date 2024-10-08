@@ -20,22 +20,34 @@ import Test.QuickCheck (class Arbitrary)
 import Test.QuickCheck.Gen (Gen, chooseInt)
 import Yoga.JSON (class WriteForeign, writeImpl)
 
-type Animation =
-  { createEntity ∷ Array EntityCreation
+type Animation ∷ ∀ k1 k2. k1 → k2 → Type
+type Animation w h =
+  { createEntity ∷ Array (EntityCreation w h)
   , destroyEntity ∷ Array EntityDestruction
-  , updateEntity ∷ Array EntityMovement
+  , updateEntity ∷ Array (EntityMovement w h)
   }
 
-type EntityCreation =
-  { entityType ∷ String, id ∷ Id, position ∷ Position }
+type EntityCreation ∷ ∀ k1 k2. k1 → k2 → Type
+type EntityCreation w h =
+  { entityType ∷ String, id ∷ Id, position ∷ Position w h }
 
 type EntityDestruction =
   { id ∷ Id }
 
-type EntityMovement =
-  { id ∷ Id, sourcePosition ∷ Position, targetPosition ∷ Position }
+type EntityMovement ∷ ∀ k1 k2. k1 → k2 → Type
+type EntityMovement w h =
+  { id ∷ Id
+  , sourcePosition ∷ Position w h
+  , targetPosition ∷ Position w h
+  }
 
-animate ∷ Game.State → Game.State → Animation
+animate
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ Game.State w h
+  → Game.State w h
+  → Animation w h
 animate (Game.State previousState) (Game.State nextState) =
   { createEntity: M.difference nextState previousState #
       foldlWithIndex create []
@@ -45,7 +57,10 @@ animate (Game.State previousState) (Game.State nextState) =
   }
   where
   create
-    ∷ Id → Array EntityCreation → Game.Entity → Array EntityCreation
+    ∷ Id
+    → Array (EntityCreation w h)
+    → (Game.Entity w h)
+    → Array (EntityCreation w h)
   create id acc = case _ of
     Game.EnergySource { position } →
       acc <> [ { id, position, entityType: "energy-source" } ]
@@ -57,15 +72,15 @@ animate (Game.State previousState) (Game.State nextState) =
   destroy
     ∷ Id
     → Array EntityDestruction
-    → Game.Entity
+    → Game.Entity w h
     → Array EntityDestruction
   destroy id acc _ = acc <> [ { id } ]
 
   update
     ∷ Id
-    → Array EntityMovement
-    → Game.Entity
-    → Array EntityMovement
+    → Array (EntityMovement w h)
+    → Game.Entity w h
+    → Array (EntityMovement w h)
   update id acc previousEntity = case M.lookup id nextState of
     Just nextEntity →
       case previousEntity of

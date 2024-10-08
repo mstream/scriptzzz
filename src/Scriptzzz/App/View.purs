@@ -1,8 +1,7 @@
 module Scriptzzz.App.View where
 
-import Prelude
+import Scriptzzz.Prelude
 
-import Control.Monad.Reader (ask)
 import Flame (Html)
 import Flame.Html.Attribute as HA
 import Flame.Html.Element as HE
@@ -10,7 +9,7 @@ import Scriptzzz.App.Message as Msg
 import Scriptzzz.App.Model (Model(..))
 import Scriptzzz.App.View.Element (canvas, editor)
 
-view ∷ Model → Html Msg.Message
+view ∷ ∀ h w. Pos h ⇒ Pos w ⇒ Model w h → Html (Msg.Message w h)
 view = do
   canvasColumnContents ← viewCanvasColumnContents
   editorColumnContents ← viewEditorColumnContents
@@ -28,15 +27,17 @@ view = do
         ]
     ]
 
-viewCanvasColumnContents ∷ Model → Array (Html Msg.Message)
+viewCanvasColumnContents
+  ∷ ∀ h w. Pos h ⇒ Pos w ⇒ Model w h → Array (Html (Msg.Message w h))
 viewCanvasColumnContents = do
   model ← ask
-  pure $ [ canvas ] <> case model of
-    CanvasInitializing →
-      []
+  pure case model of
+    CanvasInitializing canvasInitializingModel →
+      [ canvas canvasInitializingModel.obstacleMatrix ]
 
-    Editing _ →
-      [ HE.button
+    Editing editingModel →
+      [ canvas editingModel.gameSettings.environment.obstacleMatrix
+      , HE.button
           [ HA.onClick
               $ Msg.createWithoutTimestamp
               $ Msg.SimulationStartRequested unit
@@ -44,8 +45,10 @@ viewCanvasColumnContents = do
           [ HE.text "Start" ]
       ]
 
-    Simulating _ →
-      [ HE.button
+    Simulating simulatingModel →
+      [ canvas
+          simulatingModel.editor.gameSettings.environment.obstacleMatrix
+      , HE.button
           [ HA.onClick
               $ Msg.createWithoutTimestamp
               $ Msg.SimulationStopRequested unit
@@ -53,7 +56,8 @@ viewCanvasColumnContents = do
           [ HE.text "Stop" ]
       ]
 
-viewEditorColumnContents ∷ Model → Array (Html Msg.Message)
+viewEditorColumnContents
+  ∷ ∀ h w. Pos h ⇒ Pos w ⇒ Model w h → Array (Html (Msg.Message w h))
 viewEditorColumnContents = do
   model ← ask
 
@@ -70,7 +74,8 @@ viewEditorColumnContents = do
     _ →
       [ editor false, HE.div' [ HA.class' "is-skeleton" ] ]
 
-viewDebugColumnContents ∷ Model → Array (Html Msg.Message)
+viewDebugColumnContents
+  ∷ ∀ h w. Pos h ⇒ Pos w ⇒ Model w h → Array (Html (Msg.Message w h))
 viewDebugColumnContents = do
   model ← ask
   pure case model of

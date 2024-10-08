@@ -7,11 +7,13 @@ module Test.Flame.Update.Handler
   , HandlerSuccessScenarioConfig
   , ModelAssertionConfig
   , ModelAssertionM
+  , RunFailureScenario
+  , RunSuccessScenario
   , assertEqual
   , fail
+  , makeRunFailureScenario
+  , makeRunSuccessScenario
   , nextTimeTickTimestamp
-  , runFailureScenario
-  , runSuccessScenario
   ) where
 
 import Scriptzzz.Prelude
@@ -52,7 +54,7 @@ derive newtype instance MonadState Timestamp ConfigM
 
 instance GetTime ConfigM where
   nextTimeTickTimestamp ∷ ConfigM Timestamp
-  nextTimeTickTimestamp = modify \currentTimestamp ->
+  nextTimeTickTimestamp = modify \currentTimestamp →
     fromMaybe currentTimestamp (succ currentTimestamp)
 
 runConfigM ∷ ∀ a. ConfigM a → a
@@ -129,14 +131,18 @@ type HandlerSuccessScenarioConfig model cmd payload =
   , previousModel ∷ model
   }
 
-runFailureScenario
+type RunFailureScenario ∷ ∀ k. Type → k → Type → Type
+type RunFailureScenario model cmd payload =
+  Int
+  → ConfigM (Gen (HandlerFailureScenarioConfig model payload))
+  → Aff Unit
+
+makeRunFailureScenario
   ∷ ∀ cmd model payload
   . Show model
   ⇒ HandleMessage model cmd payload
-  → Int
-  → ConfigM (Gen (HandlerFailureScenarioConfig model payload))
-  → Aff Unit
-runFailureScenario handleMessage times configM =
+  → RunFailureScenario model cmd payload
+makeRunFailureScenario handleMessage times configM =
   runScenario handleMessage times (map toScenarioConfig <$> configM)
   where
   toScenarioConfig
@@ -149,14 +155,17 @@ runFailureScenario handleMessage times configM =
     , previousModel
     }
 
-runSuccessScenario
+type RunSuccessScenario model cmd payload =
+  Int
+  → ConfigM (Gen (HandlerSuccessScenarioConfig model cmd payload))
+  → Aff Unit
+
+makeRunSuccessScenario
   ∷ ∀ cmd model payload
   . Show model
   ⇒ HandleMessage model cmd payload
-  → Int
-  → ConfigM (Gen (HandlerSuccessScenarioConfig model cmd payload))
-  → Aff Unit
-runSuccessScenario handleMessage times configM =
+  → RunSuccessScenario model cmd payload
+makeRunSuccessScenario handleMessage times configM =
   runScenario handleMessage times (map toScenarioConfig <$> configM)
   where
   toScenarioConfig

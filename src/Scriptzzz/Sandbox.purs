@@ -1,6 +1,8 @@
 module Scriptzzz.Sandbox
   ( class ManageWebWorker
   , ExecutionResult(..)
+  , ForeignValue
+  , InternalParsingFailure
   , ParsingErrors
   , SandboxM
   , SandboxT
@@ -28,7 +30,7 @@ import Data.Time.Duration
   )
 import Effect.Exception as Exc
 import Effect.Ref as Ref
-import Foreign (ForeignError(..), MultipleErrors)
+import Foreign (ForeignError(..), MultipleErrors, unsafeToForeign)
 import Scriptzzz.Core (Script, scriptToString)
 import Scriptzzz.JSON (readForeignTaggedSum, writeForeignTaggedSum)
 import Web.Event.Event (Event)
@@ -117,6 +119,7 @@ instance ManageWebWorker SandboxT where
 
 foreign import mockErrorEventImpl ∷ Event
 foreign import mockMessageEventImpl ∷ Foreign → MessageEvent
+foreign import showForeignImpl ∷ Foreign → String
 
 mockErrorEvent ∷ Event
 mockErrorEvent = mockErrorEventImpl
@@ -151,11 +154,30 @@ readSandboxWorkerMessageData
 readSandboxWorkerMessageData = runExcept <<< JSON.read'
 
 data ExecutionResult a
-  = InternalParsingError ParsingErrors
+  = InternalParsingError InternalParsingFailure
   | ScriptExecutionError String
   | ScriptReturnValueNotReceived ValueNotReceivedReason
   | ScriptReturnValueParsingFailure ValueParsingFailure
   | Success a
+
+type InternalParsingFailure =
+  { errors ∷ ParsingErrors, value ∷ ForeignValue }
+
+newtype ForeignValue = ForeignValue Foreign
+
+derive newtype instance WriteForeign ForeignValue
+
+instance Arbitrary ForeignValue where
+  arbitrary = ForeignValue <$> f
+    where
+    f ∷ Gen Foreign
+    f = pure $ unsafeToForeign 123
+
+instance Eq ForeignValue where
+  eq f1 f2 = show f1 == show f2
+
+instance Show ForeignValue where
+  show (ForeignValue value) = showForeignImpl value
 
 type ValueParsingFailure =
   { errors ∷ ParsingErrors, valueJson ∷ String }
@@ -258,7 +280,10 @@ runProgram executeOutputProgram maxDuration script = do
     Right foreignValue →
       case readSandboxWorkerMessageData foreignValue of
         Left foreignErrors →
-          InternalParsingError $ ParsingErrors foreignErrors
+          InternalParsingError
+            { errors: ParsingErrors foreignErrors
+            , value: ForeignValue foreignValue
+            }
 
         Right messageData →
           case messageData of

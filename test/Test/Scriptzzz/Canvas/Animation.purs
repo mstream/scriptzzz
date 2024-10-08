@@ -3,8 +3,9 @@ module Test.Scriptzzz.Canvas.Animation (spec) where
 import Scriptzzz.Prelude
 
 import Data.Map as M
+import Data.Typelevel.Num (D4, d0, d1, d2, d3)
 import Scriptzzz.Canvas.Animation (Animation, animate)
-import Scriptzzz.Core (Id, makeId)
+import Scriptzzz.Core (Id, makeId, makePosition)
 import Scriptzzz.Game as Game
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
@@ -22,29 +23,29 @@ spec = do
     describe "animate" do
       it "creates entities" do
         let
-          previousGameState ∷ Game.State
+          previousGameState ∷ Game.State D4 D4
           previousGameState = Game.State $ M.fromFoldable
             [ e1 /\ Game.Worker
-                { task: Nothing, position: { x: 1, y: 2 } }
+                { task: Nothing, position: makePosition d0 d1 }
             ]
 
-          nextGameState ∷ Game.State
+          nextGameState ∷ Game.State D4 D4
           nextGameState = Game.State $ M.fromFoldable
             [ e1 /\ Game.Worker
-                { task: Nothing, position: { x: 1, y: 2 } }
+                { task: Nothing, position: makePosition d0 d1 }
             , e2 /\ Game.Worker
-                { task: Nothing, position: { x: 3, y: 4 } }
+                { task: Nothing, position: makePosition d2 d3 }
             ]
 
-          actual ∷ Animation
+          actual ∷ Animation D4 D4
           actual = animate previousGameState nextGameState
 
-          expected ∷ Animation
+          expected ∷ Animation D4 D4
           expected =
             { createEntity:
                 [ { entityType: "worker"
                   , id: e2
-                  , position: { x: 3, y: 4 }
+                  , position: makePosition d2 d3
                   }
                 ]
             , destroyEntity: []
@@ -55,24 +56,24 @@ spec = do
 
       it "destroys entities" do
         let
-          previousGameState ∷ Game.State
+          previousGameState ∷ Game.State D4 D4
           previousGameState = Game.State $ M.fromFoldable
             [ e1 /\ Game.Worker
-                { task: Nothing, position: { x: 1, y: 2 } }
+                { task: Nothing, position: makePosition d0 d1 }
             , e2 /\ Game.Worker
-                { task: Nothing, position: { x: 3, y: 4 } }
+                { task: Nothing, position: makePosition d1 d2 }
             ]
 
-          nextGameState ∷ Game.State
+          nextGameState ∷ Game.State D4 D4
           nextGameState = Game.State $ M.fromFoldable
             [ e1 /\ Game.Worker
-                { task: Nothing, position: { x: 1, y: 2 } }
+                { task: Nothing, position: makePosition d0 d1 }
             ]
 
-          actual ∷ Animation
+          actual ∷ Animation D4 D4
           actual = animate previousGameState nextGameState
 
-          expected ∷ Animation
+          expected ∷ Animation D4 D4
           expected =
             { createEntity: []
             , destroyEntity: [ { id: e2 } ]
@@ -83,33 +84,33 @@ spec = do
 
       it "updates entities" do
         let
-          previousGameState ∷ Game.State
+          previousGameState ∷ Game.State D4 D4
           previousGameState = Game.State $ M.fromFoldable
             [ e1 /\ Game.Worker
-                { task: Nothing, position: { x: 1, y: 2 } }
+                { task: Nothing, position: makePosition d0 d1 }
             , e2 /\ Game.Worker
-                { task: Nothing, position: { x: 3, y: 4 } }
+                { task: Nothing, position: makePosition d1 d2 }
             ]
 
-          nextGameState ∷ Game.State
+          nextGameState ∷ Game.State D4 D4
           nextGameState = Game.State $ M.fromFoldable
             [ e1 /\ Game.Worker
-                { task: Nothing, position: { x: 1, y: 2 } }
+                { task: Nothing, position: makePosition d0 d1 }
             , e2 /\ Game.Worker
-                { task: Nothing, position: { x: 5, y: 6 } }
+                { task: Nothing, position: makePosition d2 d3 }
             ]
 
-          actual ∷ Animation
+          actual ∷ Animation D4 D4
           actual = animate previousGameState nextGameState
 
-          expected ∷ Animation
+          expected ∷ Animation D4 D4
           expected =
             { createEntity: []
             , destroyEntity: []
             , updateEntity:
                 [ { id: e2
-                  , sourcePosition: { x: 3, y: 4 }
-                  , targetPosition: { x: 5, y: 6 }
+                  , sourcePosition: makePosition d1 d2
+                  , targetPosition: makePosition d2 d3
                   }
                 ]
             }

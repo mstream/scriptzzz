@@ -5,9 +5,9 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Tuple.Nested ((/\))
-import Scriptzzz.App.Command (CommandParameters, Commands)
+import Data.Typelevel.Num (class Pos)
 import Scriptzzz.App.Command as Cmd
-import Scriptzzz.App.Controller.Handler (HandleMessage)
+import Scriptzzz.App.Controller.Handler (HandleScriptzzzMessage)
 import Scriptzzz.App.Message as Msg
 import Scriptzzz.App.Model (Model(..))
 import Scriptzzz.App.Model.AnimationState
@@ -19,13 +19,11 @@ import Scriptzzz.Canvas.Animation (Animation, animate)
 import Scriptzzz.Game as Game
 import Scriptzzz.Sandbox (ExecutionResult(..))
 
-type Handle =
-  HandleMessage
-    Model
-    { | Commands CommandParameters }
-    Msg.ScriptExecutedPayload
-
-handle ∷ Handle
+handle
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ HandleScriptzzzMessage w h (Msg.ScriptExecutedPayload w h)
 handle model message = case model of
   Simulating simulatingModel →
     case simulatingModel.animationState of
@@ -41,34 +39,38 @@ handle model message = case model of
           gameStep = nextGameStep updatedModel.gameStep
         in
           case message.executionResult of
-            Success commands →
+            Success gameCommands →
               let
                 newGameState /\ newGameLogs = Game.update
                   simulatingModel.editor.gameSettings.environment
-                  commands
+                  gameCommands
                   simulatingModel.gameState
 
-                animation ∷ Animation
+                animation ∷ Animation w h
                 animation = animate
                   simulatingModel.gameState
                   newGameState
 
+                newModel ∷ Model w h
+                newModel = Simulating simulatingModel
+                  { animationState = Updating { gameStep }
+                  , editor = simulatingModel.editor
+                      { lastScriptExecution = Just
+                          { finishTime: message.executionFinishTime
+                          , result: Success gameCommands
+                          , startTime: message.executionStartTime
+                          }
+                      }
+                  , gameLogs = simulatingModel.gameLogs <> newGameLogs
+                  , gameState = newGameState
+                  }
+
+                commands ∷ Cmd.Commands w h
+                commands = Cmd.none `Cmd.withUpdateAnimation`
+                  { animation, gameStep }
+
               in
-                Right $
-                  Simulating simulatingModel
-                    { animationState = Updating { gameStep }
-                    , editor = simulatingModel.editor
-                        { lastScriptExecution = Just
-                            { finishTime: message.executionFinishTime
-                            , result: Success commands
-                            , startTime: message.executionStartTime
-                            }
-                        }
-                    , gameLogs = simulatingModel.gameLogs <> newGameLogs
-                    , gameState = newGameState
-                    }
-                    /\ Cmd.none
-                      { updateAnimation = Just { animation, gameStep } }
+                Right $ newModel /\ commands
 
             failedExecutionResult →
               Right $

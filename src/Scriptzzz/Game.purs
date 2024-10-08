@@ -15,7 +15,6 @@ import Scriptzzz.Prelude
 import Control.Monad.RWS (RWS, execRWS)
 import Data.FoldableWithIndex (foldWithIndexM)
 import Data.Map as M
-import Data.Typelevel.Num (D32)
 import Foreign.Object (fromFoldable)
 import Scriptzzz.Core (Id, Position)
 import Scriptzzz.Game.Command
@@ -24,48 +23,52 @@ import Scriptzzz.Game.Command
   , UnitCommands(..)
   ) as Command
 import Scriptzzz.JSON (writeForeignTaggedSum)
+import Scriptzzz.PathFinding (Path)
 import Scriptzzz.PathFinding as PF
 import Test.QuickCheck (class Arbitrary, arbitrary)
 import Test.QuickCheck.Arbitrary (genericArbitrary)
 import Yoga.JSON (class WriteForeign, writeImpl)
 
-type MovingTask =
-  { path ∷ PF.Path, targetPosition ∷ Position }
+type MovingTask ∷ ∀ k1 k2. k1 → k2 → Type
+type MovingTask w h =
+  { path ∷ Path w h, targetPosition ∷ Position w h }
 
-data Entity
-  = EnergySource { position ∷ Position, quantity ∷ Int }
-  | Trail { position ∷ Position }
-  | Worker { task ∷ Maybe MovingTask, position ∷ Position }
+data Entity ∷ ∀ k1 k2. k1 → k2 → Type
+data Entity w h
+  = EnergySource { position ∷ Position w h, quantity ∷ Int }
+  | Trail { position ∷ Position w h }
+  | Worker { task ∷ Maybe (MovingTask w h), position ∷ Position w h }
 
-derive instance Generic Entity _
+derive instance Generic (Entity w h) _
 
-instance Arbitrary Entity where
+instance (Pos h, Pos w) ⇒ Arbitrary (Entity w h) where
   arbitrary = genericArbitrary
 
-instance Eq Entity where
+instance Eq (Entity w h) where
   eq = genericEq
 
-instance Show Entity where
+instance Show (Entity w h) where
   show = genericShow
 
-instance WriteForeign Entity where
+instance WriteForeign (Entity w h) where
   writeImpl = writeForeignTaggedSum
 
-newtype State = State (Map Id Entity)
+newtype State ∷ ∀ k1 k2. k1 → k2 → Type
+newtype State w h = State (Map Id (Entity w h))
 
-derive newtype instance Eq State
-derive newtype instance Show State
+derive newtype instance Eq (State w h)
+derive newtype instance Show (State w h)
 
-instance Arbitrary State where
+instance (Pos h, Pos w) ⇒ Arbitrary (State w h) where
   arbitrary = do
     id ← arbitrary
     entity ← arbitrary
     pure $ State $ M.singleton id entity
 
-instance WriteForeign State where
+instance WriteForeign (State w h) where
   writeImpl (State state) = writeImpl $ fromFoldable $ objectEntries
     where
-    objectEntries ∷ List (String /\ Entity)
+    objectEntries ∷ List (String /\ (Entity w h))
     objectEntries = M.toUnfoldable state <#>
       \(id /\ entity) →
         show id /\ entity
@@ -79,25 +82,39 @@ derive newtype instance WriteForeign UpdateError
 
 type UpdateMonad = Writer (List UpdateError)
 
-type Environment =
-  { obstacleMatrix ∷ PF.ObstacleMatrix D32 D32 }
+type Environment ∷ ∀ k1 k2. k1 → k2 → Type
+type Environment w h =
+  { obstacleMatrix ∷ PF.ObstacleMatrix w h }
 
 type Logs = Array UpdateError
 
-type Game = RWS Environment Logs State
+type Game ∷ ∀ k1 k2. k1 → k2 → Type → Type
+type Game w h = RWS (Environment w h) Logs (State w h)
 
-update ∷ Environment -> Command.Commands → State → State /\ Logs
+update
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ Environment w h
+  → Command.Commands w h
+  → State w h
+  → State w h /\ Logs
 update environment commands state = execRWS
   (moveTo commands.workers.moveTo)
   environment
   state
 
-moveTo ∷ Command.UnitCommands Command.MoveToCommand → Game Unit
+moveTo
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ Command.UnitCommands (Command.MoveToCommand w h)
+  → Game w h Unit
 moveTo commands = do
   State state ← get
 
   let
-    f ∷ Id → Unit → Command.MoveToCommand → Game Unit
+    f ∷ Id → Unit → Command.MoveToCommand w h → Game w h Unit
     f id _ { position } = case M.lookup id state of
       Just entity →
         case entity of
@@ -136,7 +153,7 @@ moveTo commands = do
                     put $ State $ M.insert
                       id
                       ( Worker workerProps
-                          { position = nextPosition 
+                          { position = nextPosition
                           , task = Just
                               { path: nextPath
                               , targetPosition: position
@@ -157,5 +174,5 @@ moveTo commands = do
 
   foldWithIndexM f unit commands
 
-blankState ∷ State
+blankState ∷ ∀ h w. Pos h ⇒ Pos w ⇒ State w h
 blankState = State M.empty

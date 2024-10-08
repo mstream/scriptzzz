@@ -1,16 +1,23 @@
+function exceptionMessage(errorMessage) {
+  return { data: errorMessage, kind: 'exception' }
+}
+
+function valueMessage(value) {
+  return { data: JSON.stringify(value), kind: 'value' }
+}
+
 self.onmessage = function(event) {
   const code = event.data
   console.log(`Executing script: ${code}`)
   const fn = new Function(code)
   try {
-    const output = JSON.stringify(fn())
-    self.postMessage({ data: output, kind: 'value' });
+    self.postMessage(valueMessage(fn()));
   } catch (error) {
-    const errorMessage = error instanceof Error ?
-      error.message :
-      'unexpected error'
-
-    self.postMessage({ data: errorMessage, kind: 'exception' });
+    if (error instanceof Error) {
+      self.postMessage(exceptionMessage(error.message));
+    } else {
+      self.postMessage(exceptionMessage('unknown error'));
+    }
   }
 }
 

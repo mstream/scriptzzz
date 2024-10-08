@@ -6,7 +6,7 @@ import Control.Monad.Gen (suchThat)
 import Data.Map as M
 import Data.String.NonEmpty as NES
 import Data.Time.Duration (Milliseconds(..))
-import Scriptzzz.App.Command (CommandParameters, Commands)
+import Data.Typelevel.Num (D4, d0, d1, d2, d3)
 import Scriptzzz.App.Command as Cmd
 import Scriptzzz.App.Controller.Handler.ScriptExecuted as CanvasInitialized
 import Scriptzzz.App.Message (ScriptExecutedPayload)
@@ -16,66 +16,59 @@ import Scriptzzz.App.Model.AnimationState
   , initialGameStep
   , nextGameStep
   )
-import Scriptzzz.Core (Id, makeId)
+import Scriptzzz.Core (Id, makeId, makePosition)
 import Scriptzzz.Game as Game
 import Scriptzzz.PathFinding as PF
 import Scriptzzz.Sandbox as Sandbox
-import Test.Flame.Update.Handler
-  ( ConfigM
-  , nextTimeTickTimestamp
-  , runFailureScenario
-  , runSuccessScenario
-  )
 import Test.Flame.Update.Handler as TH
 import Test.Flame.Update.Handler.Scriptzzz
-  ( HandlerFailureScenarioConfig
-  , HandlerSuccessScenarioConfig
-  , ModelAssertionConfig
+  ( ModelAssertionConfig
+  , RunFailureScenario
+  , RunSuccessScenario
   )
 import Test.Spec (Spec, describe, it)
 
 spec ∷ Spec Unit
 spec = do
   describe "Scriptzz.App.Controller.Handler.ScriptExecuted" do
-    it "fails when in a state different than Simulating"
-      $ runScriptExecutedFailureScenario 10 do
-          t0 ← nextTimeTickTimestamp
-          t1 ← nextTimeTickTimestamp
-          pure do
-            previousModel ← arbitrary `suchThat` case _ of
-              Simulating _ →
-                false
+    it "fails when in wrong mode" do
+      runFailureScenario 10 do
+        t0 ← TH.nextTimeTickTimestamp
+        t1 ← TH.nextTimeTickTimestamp
+        pure do
+          previousModel ∷ Model D4 D4 ← arbitrary `suchThat` case _ of
+            Simulating _ →
+              false
 
-              _ → true
+            _ → true
 
-            let
-              messagePayload ∷ ScriptExecutedPayload
-              messagePayload =
-                { executionFinishTime: t1
-                , executionResult: Sandbox.ScriptReturnValueNotReceived
-                    $ Sandbox.ExecutionTimeout
-                    $ Milliseconds 123.0
-                , executionStartTime: t0
-                }
-
-              expectedErrorMessage ∷ String
-              expectedErrorMessage =
-                "Not in simulating mode."
-
-            pure
-              { expectedErrorMessage
-              , messagePayload
-              , previousModel
+          let
+            messagePayload ∷ ScriptExecutedPayload D4 D4
+            messagePayload =
+              { executionFinishTime: t1
+              , executionResult: Sandbox.ScriptReturnValueNotReceived
+                  $ Sandbox.ExecutionTimeout
+                  $ Milliseconds 123.0
+              , executionStartTime: t0
               }
 
-    it
-      "goes back to edit mode when script fails and 'stop on error' option is enabled"
-      do
-        runScriptExecutedSuccessScenario 10 do
-          t0 ← nextTimeTickTimestamp
-          t1 ← nextTimeTickTimestamp
-          pure do
-            simulatingModel ← arbitrary <#> \(model ∷ SimulatingModel) →
+            expectedErrorMessage ∷ String
+            expectedErrorMessage =
+              "Not in simulating mode."
+
+          pure
+            { expectedErrorMessage
+            , messagePayload
+            , previousModel
+            }
+
+    it "handles script error with 'stop on error' option is enabled" do
+      runSuccessScenario 10 do
+        t0 ← TH.nextTimeTickTimestamp
+        t1 ← TH.nextTimeTickTimestamp
+        pure do
+          simulatingModel ← arbitrary <#>
+            \(model ∷ SimulatingModel D4 D4) →
               model
                 { animationState = Updated { gameStep: initialGameStep }
                 , editor = model.editor
@@ -84,93 +77,17 @@ spec = do
                     }
                 }
 
-            executionResult ← arbitrary `suchThat` case _ of
-              Sandbox.Success _ →
-                false
+          executionResult ← arbitrary `suchThat` case _ of
+            Sandbox.Success _ →
+              false
 
-              _ → true
-
-            let
-              previousModel ∷ Model
-              previousModel = Simulating simulatingModel
-
-              messagePayload ∷ ScriptExecutedPayload
-              messagePayload =
-                { executionFinishTime: t1
-                , executionResult
-                , executionStartTime: t0
-                }
-
-              modelExpectations
-                ∷ ∀ m
-                . TH.Assert m
-                ⇒ MonadAsk ModelAssertionConfig m
-                ⇒ m Unit
-              modelExpectations = do
-                { nextModel } ← ask
-                case nextModel of
-                  Editing editingModel →
-                    TH.assertEqual
-                      { actual: editingModel.lastScriptExecution
-                      , description: NES.nes
-                          ( Proxy
-                              ∷ _
-                                  "script execution result should be set"
-                          )
-                      , expected: Just
-                          { finishTime: t1
-                          , result: executionResult
-                          , startTime: t0
-                          }
-                      }
-
-                  _ →
-                    TH.fail $ NES.nes (Proxy ∷ _ "not in editing mode")
-
-              expectedCommands ∷ { | Commands CommandParameters }
-              expectedCommands = Cmd.none
-
-            pure
-              { expectedCommands
-              , messagePayload
-              , modelExpectations
-              , previousModel
-              }
-
-    it "should update animation on successful execution" do
-      runScriptExecutedSuccessScenario 10 do
-        t0 ← nextTimeTickTimestamp
-        t1 ← nextTimeTickTimestamp
-        pure do
-          let
-            workerId ∷ Id
-            workerId = makeId (Proxy ∷ _ "foo")
-
-          simulatingModel ← arbitrary <#> \(model ∷ SimulatingModel) →
-            model
-              { animationState = Updated { gameStep: initialGameStep }
-              , gameState = Game.State $ M.singleton
-                  workerId
-                  ( Game.Worker
-                      { position: { x: 1, y: 2 }, task: Nothing }
-                  )
-              }
+            _ → true
 
           let
-            executionResult ∷ Sandbox.ExecutionResult Game.Commands
-            executionResult =
-              Sandbox.Success
-                { workers:
-                    { moveTo: Game.UnitCommands $ M.singleton
-                        workerId
-                        { position: { x: 3, y: 4 } }
-                    }
-                }
-
-            previousModel ∷ Model
+            previousModel ∷ Model D4 D4
             previousModel = Simulating simulatingModel
 
-            messagePayload ∷ ScriptExecutedPayload
+            messagePayload ∷ ScriptExecutedPayload D4 D4
             messagePayload =
               { executionFinishTime: t1
               , executionResult
@@ -180,7 +97,85 @@ spec = do
             modelExpectations
               ∷ ∀ m
               . TH.Assert m
-              ⇒ MonadAsk ModelAssertionConfig m
+              ⇒ MonadAsk (ModelAssertionConfig D4 D4) m
+              ⇒ m Unit
+            modelExpectations = do
+              { nextModel } ← ask
+              case nextModel of
+                Editing editingModel →
+                  TH.assertEqual
+                    { actual: editingModel.lastScriptExecution
+                    , description: NES.nes
+                        ( Proxy
+                            ∷ _
+                                "script execution result should be set"
+                        )
+                    , expected: Just
+                        { finishTime: t1
+                        , result: executionResult
+                        , startTime: t0
+                        }
+                    }
+
+                _ →
+                  TH.fail $ NES.nes (Proxy ∷ _ "not in editing mode")
+
+            expectedCommands ∷ Cmd.Commands D4 D4
+            expectedCommands = Cmd.none
+
+          pure
+            { expectedCommands
+            , messagePayload
+            , modelExpectations
+            , previousModel
+            }
+
+    it "updates animation on success" do
+      runSuccessScenario 10 do
+        t0 ← TH.nextTimeTickTimestamp
+        t1 ← TH.nextTimeTickTimestamp
+        pure do
+          let
+            workerId ∷ Id
+            workerId = makeId (Proxy ∷ _ "foo")
+
+          simulatingModel ← arbitrary <#>
+            \(model ∷ SimulatingModel D4 D4) →
+              model
+                { animationState = Updated { gameStep: initialGameStep }
+                , gameState = Game.State $ M.singleton
+                    workerId
+                    ( Game.Worker
+                        { position: makePosition d0 d1, task: Nothing }
+                    )
+                }
+
+          let
+            executionResult
+              ∷ Sandbox.ExecutionResult (Game.Commands D4 D4)
+            executionResult =
+              Sandbox.Success
+                { workers:
+                    { moveTo: Game.UnitCommands $ M.singleton
+                        workerId
+                        { position: makePosition d2 d3 }
+                    }
+                }
+
+            previousModel ∷ Model D4 D4
+            previousModel = Simulating simulatingModel
+
+            messagePayload ∷ ScriptExecutedPayload D4 D4
+            messagePayload =
+              { executionFinishTime: t1
+              , executionResult
+              , executionStartTime: t0
+              }
+
+            modelExpectations
+              ∷ ∀ m
+              . TH.Assert m
+              ⇒ MonadAsk (ModelAssertionConfig D4 D4) m
               ⇒ m Unit
             modelExpectations = do
               { nextModel } ← ask
@@ -208,12 +203,12 @@ spec = do
                     , expected: Game.State $ M.singleton
                         workerId
                         ( Game.Worker
-                            { position: { x: 2, y: 3 }
+                            { position: makePosition d1 d2
                             , task: Just
                                 { path: PF.buildPath
-                                    { x: 3, y: 4 }
+                                    (makePosition d2 d3)
                                     []
-                                , targetPosition: { x: 3, y: 4 }
+                                , targetPosition: makePosition d2 d3
                                 }
                             }
                         )
@@ -233,21 +228,19 @@ spec = do
                 _ →
                   TH.fail $ NES.nes (Proxy ∷ _ "not in simulating mode")
 
-            expectedCommands ∷ { | Commands CommandParameters }
-            expectedCommands = Cmd.none
-              { updateAnimation = Just
-                  { animation:
-                      { createEntity: []
-                      , destroyEntity: []
-                      , updateEntity:
-                          [ { id: workerId
-                            , sourcePosition: { x: 1, y: 2 }
-                            , targetPosition: { x: 2, y: 3 }
-                            }
-                          ]
-                      }
-                  , gameStep: nextGameStep initialGameStep
+            expectedCommands ∷ Cmd.Commands D4 D4
+            expectedCommands = Cmd.none `Cmd.withUpdateAnimation`
+              { animation:
+                  { createEntity: []
+                  , destroyEntity: []
+                  , updateEntity:
+                      [ { id: workerId
+                        , sourcePosition: makePosition d0 d1
+                        , targetPosition: makePosition d1 d2
+                        }
+                      ]
                   }
+              , gameStep: nextGameStep initialGameStep
               }
 
           pure
@@ -257,16 +250,16 @@ spec = do
             , previousModel
             }
 
-runScriptExecutedFailureScenario
-  ∷ Int
-  → ConfigM (Gen (HandlerFailureScenarioConfig ScriptExecutedPayload))
-  → Aff Unit
-runScriptExecutedFailureScenario =
-  runFailureScenario CanvasInitialized.handle
+runFailureScenario
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ RunFailureScenario w h (ScriptExecutedPayload w h)
+runFailureScenario = TH.makeRunFailureScenario CanvasInitialized.handle
 
-runScriptExecutedSuccessScenario
-  ∷ Int
-  → ConfigM (Gen (HandlerSuccessScenarioConfig ScriptExecutedPayload))
-  → Aff Unit
-runScriptExecutedSuccessScenario =
-  runSuccessScenario CanvasInitialized.handle
+runSuccessScenario
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ RunSuccessScenario w h (ScriptExecutedPayload w h)
+runSuccessScenario = TH.makeRunSuccessScenario CanvasInitialized.handle

@@ -7,7 +7,7 @@ import Scriptzzz.Prelude
 import Control.Monad.Gen (suchThat)
 import Data.Map as M
 import Data.String.NonEmpty as NES
-import Scriptzzz.App.Command (CommandParameters, Commands)
+import Data.Typelevel.Num (D4, d0, d1)
 import Scriptzzz.App.Command as Cmd
 import Scriptzzz.App.Controller.Handler.SimulationStartRequested as SimulationStartRequested
 import Scriptzzz.App.Message (SimulationStartRequestedPayload)
@@ -16,61 +16,56 @@ import Scriptzzz.App.Model.AnimationState
   ( AnimationState(..)
   , initialGameStep
   )
-import Scriptzzz.Core (Id, Position, makeId)
+import Scriptzzz.Core (Id, Position, makeId, makePosition)
 import Scriptzzz.Game (Entity(..))
 import Scriptzzz.Game as Game
-import Test.Flame.Update.Handler
-  ( ConfigM
-  , runFailureScenario
-  , runSuccessScenario
-  )
 import Test.Flame.Update.Handler as TH
 import Test.Flame.Update.Handler.Scriptzzz
-  ( HandlerFailureScenarioConfig
-  , HandlerSuccessScenarioConfig
-  , ModelAssertionConfig
+  ( ModelAssertionConfig
+  , RunFailureScenario
+  , RunSuccessScenario
   )
 import Test.QuickCheck (arbitrary)
-import Test.QuickCheck.Gen (Gen)
 import Test.Spec (Spec, describe, it)
 
 spec ∷ Spec Unit
 spec = do
   describe "Scriptzz.App.Controller.Handler.SimulationStartRequested" do
-    it "fails when in a state different than Editing"
-      $ runSimulationStartRequestedFailureScenario 10 do
-          pure do
-            previousModel ← arbitrary `suchThat` case _ of
-              Editing _ →
-                false
+    it "fails when in a wrong mode" do
+      runFailureScenario 10 do
+        pure do
+          previousModel ∷ Model D4 D4 ← arbitrary `suchThat` case _ of
+            Editing _ →
+              false
 
-              _ → true
+            _ → true
 
-            let
-              messagePayload ∷ SimulationStartRequestedPayload
-              messagePayload = unit
+          let
+            messagePayload ∷ SimulationStartRequestedPayload
+            messagePayload = unit
 
-              expectedErrorMessage ∷ String
-              expectedErrorMessage =
-                "Not in editing mode."
+            expectedErrorMessage ∷ String
+            expectedErrorMessage =
+              "Not in editing mode."
 
-            pure
-              { expectedErrorMessage
-              , messagePayload
-              , previousModel
-              }
+          pure
+            { expectedErrorMessage
+            , messagePayload
+            , previousModel
+            }
 
-    it "switches from Editing to Simulationg state"
-      $ runSimulationStartRequestedSuccessScenario 1 do
-          pure do
-            let
-              entityId ∷ Id
-              entityId = makeId (Proxy ∷ _ "foo")
+    it "switches from Editing to Simulationg state" do
+      runSuccessScenario 1 do
+        pure do
+          let
+            entityId ∷ Id
+            entityId = makeId (Proxy ∷ _ "foo")
 
-              entityPosition ∷ Position
-              entityPosition = { x: 1, y: 2 }
+            entityPosition ∷ Position D4 D4
+            entityPosition = makePosition d0 d1
 
-            editingModel ← arbitrary <#> \(model ∷ EditingModel) → model
+          editingModel ← arbitrary <#> \(model ∷ EditingModel D4 D4) →
+            model
               { gameSettings = model.gameSettings
                   { initialState = Game.State $ M.singleton
                       entityId
@@ -80,94 +75,88 @@ spec = do
                   }
               }
 
-            let
-              previousModel ∷ Model
-              previousModel = Editing editingModel
+          let
+            previousModel ∷ Model D4 D4
+            previousModel = Editing editingModel
 
-              messagePayload ∷ SimulationStartRequestedPayload
-              messagePayload = unit
+            messagePayload ∷ SimulationStartRequestedPayload
+            messagePayload = unit
 
-              modelExpectations
-                ∷ ∀ m
-                . TH.Assert m
-                ⇒ MonadAsk ModelAssertionConfig m
-                ⇒ m Unit
-              modelExpectations = do
-                { nextModel } ← ask
-                case nextModel of
-                  Simulating simulatingModel → do
-                    TH.assertEqual
-                      { actual: simulatingModel.editor
-                      , description: NES.nes
-                          ( Proxy
-                              ∷ _
-                                  "previous editing mode state should be stored in simulating mode"
-                          )
-                      , expected: editingModel
-                      }
-                    TH.assertEqual
-                      { actual: simulatingModel.gameState
-                      , description: NES.nes
-                          ( Proxy
-                              ∷ _
-                                  "game state should be loaded from editing mode game settings"
-                          )
-                      , expected: editingModel.gameSettings.initialState
-                      }
-                    TH.assertEqual
-                      { actual: simulatingModel.animationState
-                      , description: NES.nes
-                          ( Proxy
-                              ∷ _ "animation should be uninitialized"
-                          )
-                      , expected: Uninitialized
-                      }
-
-                  _ →
-                    TH.fail $ NES.nes
-                      (Proxy ∷ _ "not in simulating mode")
-
-              expectedCommands ∷ { | Commands CommandParameters }
-              expectedCommands = Cmd.none
-                { updateAnimation = Just
-                    { animation:
-                        { createEntity:
-                            [ { entityType: "worker"
-                              , id: entityId
-                              , position: entityPosition
-                              }
-                            ]
-                        , destroyEntity: []
-                        , updateEntity: []
-                        }
-                    , gameStep: initialGameStep
+            modelExpectations
+              ∷ ∀ m
+              . TH.Assert m
+              ⇒ MonadAsk (ModelAssertionConfig D4 D4) m
+              ⇒ m Unit
+            modelExpectations = do
+              { nextModel } ← ask
+              case nextModel of
+                Simulating simulatingModel → do
+                  TH.assertEqual
+                    { actual: simulatingModel.editor
+                    , description: NES.nes
+                        ( Proxy
+                            ∷ _
+                                "previous editing mode state should be stored in simulating mode"
+                        )
+                    , expected: editingModel
                     }
-                }
+                  TH.assertEqual
+                    { actual: simulatingModel.gameState
+                    , description: NES.nes
+                        ( Proxy
+                            ∷ _
+                                "game state should be loaded from editing mode game settings"
+                        )
+                    , expected: editingModel.gameSettings.initialState
+                    }
+                  TH.assertEqual
+                    { actual: simulatingModel.animationState
+                    , description: NES.nes
+                        ( Proxy
+                            ∷ _ "animation should be uninitialized"
+                        )
+                    , expected: Uninitialized
+                    }
 
-            pure
-              { expectedCommands
-              , messagePayload
-              , modelExpectations
-              , previousModel
+                _ →
+                  TH.fail $ NES.nes
+                    (Proxy ∷ _ "not in simulating mode")
+
+            expectedCommands ∷ Cmd.Commands D4 D4
+            expectedCommands = Cmd.none `Cmd.withUpdateAnimation`
+              { animation:
+                  { createEntity:
+                      [ { entityType: "worker"
+                        , id: entityId
+                        , position: entityPosition
+                        }
+                      ]
+                  , destroyEntity: []
+                  , updateEntity: []
+                  }
+              , gameStep: initialGameStep
               }
 
-runSimulationStartRequestedFailureScenario
-  ∷ Int
-  → ConfigM
-      ( Gen
-          (HandlerFailureScenarioConfig SimulationStartRequestedPayload)
-      )
-  → Aff Unit
-runSimulationStartRequestedFailureScenario =
-  runFailureScenario SimulationStartRequested.handle
+          pure
+            { expectedCommands
+            , messagePayload
+            , modelExpectations
+            , previousModel
+            }
 
-runSimulationStartRequestedSuccessScenario
-  ∷ Int
-  → ConfigM
-      ( Gen
-          (HandlerSuccessScenarioConfig SimulationStartRequestedPayload)
-      )
-  → Aff Unit
-runSimulationStartRequestedSuccessScenario =
-  runSuccessScenario SimulationStartRequested.handle
+runFailureScenario
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ RunFailureScenario w h SimulationStartRequestedPayload
+runFailureScenario =
+  TH.makeRunFailureScenario SimulationStartRequested.handle
+
+runSuccessScenario
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ RunSuccessScenario w h SimulationStartRequestedPayload
+runSuccessScenario =
+  TH.makeRunSuccessScenario SimulationStartRequested.handle
 

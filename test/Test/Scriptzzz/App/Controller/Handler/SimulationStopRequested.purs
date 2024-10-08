@@ -6,34 +6,27 @@ import Scriptzzz.Prelude
 
 import Control.Monad.Gen (suchThat)
 import Data.String.NonEmpty as NES
-import Scriptzzz.App.Command (CommandParameters, Commands)
+import Data.Typelevel.Num (D4)
 import Scriptzzz.App.Command as Cmd
 import Scriptzzz.App.Controller.Handler.SimulationStopRequested as SimulationStopRequested
 import Scriptzzz.App.Message (SimulationStopRequestedPayload)
 import Scriptzzz.App.Model (Model(..), SimulatingModel)
-import Scriptzzz.Core (Id, Position, makeId)
-import Test.Flame.Update.Handler
-  ( ConfigM
-  , runFailureScenario
-  , runSuccessScenario
-  )
 import Test.Flame.Update.Handler as TH
 import Test.Flame.Update.Handler.Scriptzzz
-  ( HandlerFailureScenarioConfig
-  , HandlerSuccessScenarioConfig
-  , ModelAssertionConfig
+  ( ModelAssertionConfig
+  , RunFailureScenario
+  , RunSuccessScenario
   )
 import Test.QuickCheck (arbitrary)
-import Test.QuickCheck.Gen (Gen)
 import Test.Spec (Spec, describe, it)
 
 spec ∷ Spec Unit
 spec = do
   describe "Scriptzz.App.Controller.Handler.SimulationStopRequested" do
-    it "fails when in a state different than Simulating"
-      $ runSimulationStopRequestedFailureScenario 10 do
+    it "fails when in wrong mode"
+      $ runFailureScenario 10 do
           pure do
-            previousModel ← arbitrary `suchThat` case _ of
+            previousModel ∷ Model D4 D4 ← arbitrary `suchThat` case _ of
               Simulating _ →
                 false
 
@@ -54,23 +47,17 @@ spec = do
               }
 
     it "switches from Simulating to Editing state"
-      $ runSimulationStopRequestedSuccessScenario 1 do
+      $ runSuccessScenario 1 do
           pure do
-            let
-              entityId ∷ Id
-              entityId = makeId (Proxy ∷ _ "foo")
-
-              entityPosition ∷ Position
-              entityPosition = { x: 1, y: 2 }
-
             editingModel ← arbitrary
 
-            simulatingModel ← arbitrary <#> \(model ∷ SimulatingModel) →
-              model
-                { editor = editingModel }
+            simulatingModel ← arbitrary <#>
+              \(model ∷ SimulatingModel D4 D4) →
+                model
+                  { editor = editingModel }
 
             let
-              previousModel ∷ Model
+              previousModel ∷ Model D4 D4
               previousModel = Simulating simulatingModel
 
               messagePayload ∷ SimulationStopRequestedPayload
@@ -79,27 +66,27 @@ spec = do
               modelExpectations
                 ∷ ∀ m
                 . TH.Assert m
-                ⇒ MonadAsk ModelAssertionConfig m
+                ⇒ MonadAsk (ModelAssertionConfig D4 D4) m
                 ⇒ m Unit
               modelExpectations = do
                 { nextModel } ← ask
                 case nextModel of
-                  Editing editingModel → do
+                  Editing actualEditingModel → do
                     TH.assertEqual
-                      { actual: simulatingModel.editor
+                      { actual: actualEditingModel
                       , description: NES.nes
                           ( Proxy
                               ∷ _
                                   "previous editing mode state should be stored in simulating mode"
                           )
-                      , expected: editingModel
+                      , expected: simulatingModel.editor
                       }
 
                   _ →
                     TH.fail $ NES.nes
                       (Proxy ∷ _ "not in editing mode")
 
-              expectedCommands ∷ { | Commands CommandParameters }
+              expectedCommands ∷ Cmd.Commands D4 D4
               expectedCommands = Cmd.none
 
             pure
@@ -109,23 +96,19 @@ spec = do
               , previousModel
               }
 
-runSimulationStopRequestedFailureScenario
-  ∷ Int
-  → ConfigM
-      ( Gen
-          (HandlerFailureScenarioConfig SimulationStopRequestedPayload)
-      )
-  → Aff Unit
-runSimulationStopRequestedFailureScenario =
-  runFailureScenario SimulationStopRequested.handle
+runFailureScenario
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ RunFailureScenario w h SimulationStopRequestedPayload
+runFailureScenario =
+  TH.makeRunFailureScenario SimulationStopRequested.handle
 
-runSimulationStopRequestedSuccessScenario
-  ∷ Int
-  → ConfigM
-      ( Gen
-          (HandlerSuccessScenarioConfig SimulationStopRequestedPayload)
-      )
-  → Aff Unit
-runSimulationStopRequestedSuccessScenario =
-  runSuccessScenario SimulationStopRequested.handle
+runSuccessScenario
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ RunSuccessScenario w h SimulationStopRequestedPayload
+runSuccessScenario =
+  TH.makeRunSuccessScenario SimulationStopRequested.handle
 

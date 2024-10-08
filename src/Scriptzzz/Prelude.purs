@@ -49,6 +49,7 @@ module Scriptzzz.Prelude
   , module Data.Traversable
   , module Data.Tuple
   , module Data.Tuple.Nested
+  , module Data.Typelevel.Num
   , module Data.Unit
   , module Data.Vec
   , module Data.Void
@@ -128,7 +129,7 @@ import Control.Monad.Writer
   , runWriterT
   , tell
   )
-import Control.Parallel (parOneOf, parOneOfMap)
+import Control.Parallel (parOneOf, parOneOfMap, parTraverse_)
 import Control.Promise (Promise)
 import Control.Semigroupoid (class Semigroupoid, compose, (<<<), (>>>))
 import Data.Boolean (otherwise)
@@ -209,6 +210,7 @@ import Data.Symbol (class IsSymbol, reflectSymbol)
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
+import Data.Typelevel.Num (class Mul, class Nat, class Pos)
 import Data.Unit (Unit, unit)
 import Data.Vec (Vec)
 import Data.Void (Void, absurd)

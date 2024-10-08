@@ -2,26 +2,25 @@ module Scriptzzz.App.Controller.Handler.SimulationStopRequested
   ( handle
   ) where
 
-import Scriptzzz.App.Command (CommandParameters, Commands)
+import Data.Typelevel.Num (class Pos)
 import Scriptzzz.App.Command as Cmd
+import Scriptzzz.App.Controller.Handler (HandleScriptzzzMessage)
 import Scriptzzz.App.Controller.Handler as Handler
 import Scriptzzz.App.Message as Msg
 import Scriptzzz.App.Model (Model(..))
 
-type Handle =
-  Handler.HandleMessage
-    Model
-    { | Commands CommandParameters }
-    Msg.SimulationStopRequestedPayload
-
-handle ∷ Handle
+handle
+  ∷ ∀ h w
+  . Pos h
+  ⇒ Pos w
+  ⇒ HandleScriptzzzMessage w h Msg.SimulationStopRequestedPayload
 handle model _ = case model of
   Simulating simulatingModel →
     let
-      newModel ∷ Model
+      newModel ∷ Model w h
       newModel = Editing simulatingModel.editor
 
-      commands ∷ { | Commands CommandParameters }
+      commands ∷ Cmd.Commands w h
       commands = Cmd.none
 
     in

@@ -1,29 +1,54 @@
 module Scriptzzz.Canvas
   ( createCanvas
   , createEntity
+  , destroyEntity
   , updateEntityPosition
   ) where
 
 import Scriptzzz.Prelude
 
-import Scriptzzz.Core (Id, Position)
+import Data.Typelevel.Num (toInt)
+import Data.Typelevel.Undefined (undefined)
+import Scriptzzz.Core (Id, Position, idToString)
+import Scriptzzz.PathFinding as PF
 import Web.DOM (Node)
 
-foreign import createCanvasImpl ∷ Effect Unit → Effect Node
+foreign import createCanvasImpl ∷ Int -> Int -> Int -> Int -> Effect Unit → Effect Node
+
+foreign import destroyEntityImpl ∷  String  → Effect Unit
+
 foreign import createEntityImpl
-  ∷ String → String → Position → Effect Unit
+  ∷ forall h w. String → String → Position w h → Effect Unit
 
 foreign import updateEntityPositionImpl
-  ∷ String → Position → Effect Unit
+  ∷ forall h w. String → Position w h → Effect Unit
 
-createCanvas ∷ Effect Unit → Effect Node
-createCanvas = createCanvasImpl
+createCanvas ∷ forall w h. Pos w => Pos h => PF.ObstacleMatrix w h -> Effect Unit → Effect Node
+createCanvas _ = createCanvasImpl gridWidth gridHeight pixelWidth pixelHeight 
+  where
+  pixelWidth :: Int
+  pixelWidth = gridWidth * cellSize
+  
+  pixelHeight :: Int
+  pixelHeight = gridHeight * cellSize
 
-createEntity ∷ Id → String → Position → Aff Unit
+  gridWidth :: Int
+  gridWidth = toInt ( undefined :: w )
+  
+  gridHeight :: Int
+  gridHeight = toInt ( undefined :: h)
+
+  cellSize :: Int
+  cellSize = 32
+
+createEntity ∷ forall h w. Pos h => Pos w => Id → String → Position w h → Aff Unit
 createEntity id entityType position = liftEffect
-  $ createEntityImpl (show id) entityType position
+  $ createEntityImpl (idToString id) entityType position
 
-updateEntityPosition ∷ Id → Position → Aff Unit
+destroyEntity ∷ Id → Aff Unit
+destroyEntity id = liftEffect $ destroyEntityImpl (idToString id) 
+
+updateEntityPosition ∷ forall h w. Id → Position w h → Aff Unit
 updateEntityPosition id position = liftEffect
-  $ updateEntityPositionImpl (show id) position
+  $ updateEntityPositionImpl (idToString id) position
 

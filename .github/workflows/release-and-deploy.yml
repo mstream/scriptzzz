@@ -1,0 +1,35 @@
+name: "Release and Deploy"
+on:
+  push:
+    branches:
+      - "master"
+
+jobs:
+  release-and-deploy:
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 60
+    steps:
+      - name: "Checkout code"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Set up Nix"
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Set up git user email"
+        run: >
+          nix develop --command
+          git config --global user.email 'maciej.laciak@gmail.com'
+
+      - name: "Set up git user name"
+        run: >
+          nix develop --command
+          git config --global user.name 'mstream'
+
+      - name: "Run e2e tests"
+        run: >
+          ./scripts/test.ts

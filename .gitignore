@@ -2,6 +2,7 @@
 .psc-ide-port
 .spago
 .spec-results
+.tmp
 dist/index.js
 node_modules
 output

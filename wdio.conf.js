@@ -1,13 +1,15 @@
 function checkEnvironmentalVariableProvided(value, name) {
   if (!value) {
-    process.stderr.write(`"${name}" environmental variable not provided.`)
+    process.stderr.write(`"${name}" environmental variable not provided.\n`)
     process.exit(1)
   }
 }
 
+const isCiEnvVarName = "CI"
 const firefoxBinaryPathEnvVarName = "FIREFOX_BINARY_PATH"
 const geckoDriverBinaryPathEnvVarName = "GECKODRIVER_BINARY_PATH"
 
+const isCi = process.env[isCiEnvVarName] == "true"
 const firefoxBinaryPath = process.env[firefoxBinaryPathEnvVarName]
 const geckoDriverBinaryPath = process.env[geckoDriverBinaryPathEnvVarName]
 
@@ -23,7 +25,8 @@ export const config = {
   capabilities: [{
     browserName: 'firefox',
     "moz:firefoxOptions": {
-      args: ['-headless'],
+      // WORKAROUND: headless mode does not work for MacOS
+      args: isCi ? ['--headless'] : [],
       binary: firefoxBinaryPath,
     },
     "wdio:geckodriverOptions": {

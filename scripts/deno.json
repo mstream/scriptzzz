@@ -2,16 +2,14 @@
   "imports": {
     "@std/path": "jsr:@std/path@^1",
     "@wdio/cli": "npm:@wdio/cli@^9",
-    "@wdio/globals": "npm:@wdio/globals@9",
-    "@wdio/logger": "npm:@wdio/logger@9",
+    "@wdio/globals": "npm:@wdio/globals@^9",
+    "@wdio/local-runner": "npm:@wdio/local-runner@^9",
+    "@wdio/logger": "npm:@wdio/logger@^9",
+    "@wdio/mocha-framework": "npm:@wdio/mocha-framework@^9",
     "@wdio/repl": "npm:@wdio/repl@^9",
-    "@wdio/runner": "npm:@wdio/runner@^9",
-    "esbuild": "npm:esbuild@~0.24",
-    "node-fetch": "npm:node-fetch@3",
-    "split2": "npm:split2@4",
-    "stream-buffers": "npm:stream-buffers@3",
-    "webdriverio": "npm:webdriverio@^9",
-    "webdriver-image-comparison": "npm:webdriver-image-comparison@7"
+    "@wdio/spec-reporter": "npm:@wdio/spec-reporter@^9",
+    "@wdio/visual-service": "npm:@wdio/visual-service@^6",
+    "esbuild": "npm:esbuild@~0.24"
   },
   "nodeModulesDir": "auto"
 }

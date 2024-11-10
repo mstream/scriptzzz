@@ -52,7 +52,8 @@
           pkgs = import nixpkgs { inherit system overlays; };
 
           wdioBrowserDependencies = {
-            firefox = pkgs.firefox-bin;
+            # WORKAROUND: dmg distribution of firefox does not work on MacOS
+            firefox = pkgs.librewolf;
             geckodriver = pkgs.geckodriver;
           };
 
@@ -60,8 +61,8 @@
             name: package:
             case name {
               firefox = case system {
-                aarch64-darwin = "${package}/Applicaions/Firefox.app/Contents/MacOs/firefox";
-                x86_64-linux = "${package}/bin/firefox";
+                aarch64-darwin = "${package}/Applications/LibreWolf.app/Contents/MacOs/librewolf";
+                x86_64-linux = "${package}/bin/librewolf";
               };
               geckodriver = "${package}/bin/geckodriver";
             };
@@ -82,7 +83,9 @@
               ]
               ++ builtins.attrValues wdioBrowserDependencies;
           };
-          packages = {wdioBrowserDependencyPaths = builtins.mapAttrs makeWdioBrowserDependencyPath wdioBrowserDependencies;};
+          packages = {
+            wdioBrowserDependencyPaths = builtins.mapAttrs makeWdioBrowserDependencyPath wdioBrowserDependencies;
+          };
           schemas = flake-schemas.schemas;
         };
 

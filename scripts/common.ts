@@ -24,6 +24,7 @@ const scriptDir = path.resolve(path.dirname(path.fromFileUrl(import.meta.url)))
 
 export const repoDir = path.join(scriptDir, "..")
 
+const textEncoder = new TextEncoder('utf-8');
 const textDecoder = new TextDecoder('utf-8');
 
 let currentRepoCommandInfo: CommandInfo | null = null
@@ -44,8 +45,11 @@ export async function runRepoCommand(executable: string, ...args: Array<string>)
 
   const output = await process.output()
 
-  await Deno.stderr.write(output.stderr)
   await Deno.stdout.write(output.stdout)
+  await Deno.stdout.write(textEncoder.encode("\n"))
+
+  await Deno.stderr.write(output.stderr)
+  await Deno.stderr.write(textEncoder.encode("\n"))
 
   const { code, success } = await process.status
 
@@ -62,13 +66,12 @@ export async function runScript(script: () => Promise<unknown>): Promise<void> {
   try {
     await script()
   } catch (error) {
-    const textEncoder = new TextEncoder();
     if (error instanceof CommandError) {
-      await Deno.stderr.write(textEncoder.encode(error.message))
+      await Deno.stderr.write(textEncoder.encode(`${error.message}\n`))
     } else if (error instanceof Error) {
-      await Deno.stderr.write(textEncoder.encode(error.stack))
+      await Deno.stderr.write(textEncoder.encode(`${error.stack}\n`))
     } else {
-      await Deno.stderr.write(textEncoder.encode("Unknown error has happended."))
+      await Deno.stderr.write(textEncoder.encode("Unknown error has happended.\n"))
     }
     Deno.exit(1)
   }

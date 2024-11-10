@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       id-token: write
-      contents: read
+      contents: write
     steps:
       - name: "Checkout code"
         uses: "actions/checkout@v4"
@@ -34,3 +34,10 @@ jobs:
       - name: "Run e2e tests"
         run: >
           ./scripts/test.ts
+
+      - name: "Create a GitHub release"
+        run: >
+          nix develop -c 
+          npm run release -- --ci
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/release-it@17/schema/release-it.json",
+  "git": {
+    "addUntrackedFiles": false,
+    "commitMessage": "chore: release v${version}",
+    "requireBranch": "master",
+    "requireCleanWorkingDir": true,
+    "requireCommits": true
+  },
+  "github": {
+    "release": true,
+    "releaseName": "Release ${version}",
+    "tokenRef": "GITHUB_TOKEN"
+  },
+  "npm": {
+    "publish": false,
+    "skipChecks": true
+  },
+  "plugins": {
+    "@csmith/release-it-calver-plugin": {
+      "format": "yyyy.mm.minor",
+      "increment": "calendar.minor"
+    }
+  }
+}

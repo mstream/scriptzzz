@@ -207,7 +207,7 @@ commandResultHandlers =
   }
   where
   withCreationTime
-    ∷ ∀ err h params result w
+    ∷ ∀ err params result
     . ( Cmd.CommandExecutionResult err params result
         → Maybe (Msg.Body w h)
       )

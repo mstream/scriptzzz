@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    flake-schemas.url = "github:DeterminateSystems/flake-schemas";
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs-firefox-darwin = {
       inputs.nixpkgs.follows = "nixpkgs";
@@ -15,6 +16,7 @@
   outputs =
     {
       nixpkgs,
+      flake-schemas,
       flake-utils,
       nixpkgs-firefox-darwin,
       purescript-overlay,
@@ -40,30 +42,48 @@
       makeOutput =
         system:
         let
+          case = key: options: options."${key}";
+
           overlays = builtins.foldl' (
             acc: conditionalOverlay:
             acc ++ (if conditionalOverlay.shouldBeApplied system then [ conditionalOverlay.overlay ] else [ ])
           ) [ ] conditionalOverlays;
 
           pkgs = import nixpkgs { inherit system overlays; };
-        in
-        {
-          devShells.default = pkgs.mkShell {
-            buildInputs = with pkgs; [
-              deno
-              esbuild
-              git
-              nodejs
-              purs
-              purs-backend-es
-              purs-tidy-bin.purs-tidy-0_11_0
-              spago-unstable
-            ];
-          };
-          packages = {
+
+          wdioBrowserDependencies = {
             firefox = pkgs.firefox-bin;
             geckodriver = pkgs.geckodriver;
           };
+
+          makeWdioBrowserDependencyPath =
+            name: package:
+            case name {
+              firefox = case system {
+                aarch64-darwin = "${package}/Applicaions/Firefox.app/Contents/MacOs/firefox";
+                x86_64-linux = "${package}/bin/firefox";
+              };
+              geckodriver = "${package}/bin/geckodriver";
+            };
+        in
+        {
+          devShells.default = pkgs.mkShell {
+            buildInputs =
+              with pkgs;
+              [
+                deno
+                esbuild
+                git
+                nodejs
+                purs
+                purs-backend-es
+                purs-tidy-bin.purs-tidy-0_11_0
+                spago-unstable
+              ]
+              ++ builtins.attrValues wdioBrowserDependencies;
+          };
+          packages = {wdioBrowserDependencyPaths = builtins.mapAttrs makeWdioBrowserDependencyPath wdioBrowserDependencies;};
+          schemas = flake-schemas.schemas;
         };
 
     in

@@ -3,7 +3,7 @@ module Scriptzzz.Main where
 import Scriptzzz.Prelude
 
 import Data.Time.Duration (Milliseconds(..))
-import Data.Typelevel.Num (D16, D32, D64, D8)
+import Data.Typelevel.Num (D16)
 import Effect.Class.Console as Console
 import Flame (Application, QuerySelector(..), mount)
 import Scriptzzz.App (makeApplication)

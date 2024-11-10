@@ -62,13 +62,15 @@ export async function runScript(script: () => Promise<unknown>): Promise<void> {
   try {
     await script()
   } catch (error) {
+    const textEncoder = new TextEncoder();
     if (error instanceof CommandError) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(error.message)
-      await Deno.stderr.write(data)
+      await Deno.stderr.write(textEncoder.encode(error.message))
+    } else if (error instanceof Error) {
+      await Deno.stderr.write(textEncoder.encode(error.stack))
     } else {
-      throw error
+      await Deno.stderr.write(textEncoder.encode("Unknown error has happended."))
     }
+    Deno.exit(1)
   }
 }
 

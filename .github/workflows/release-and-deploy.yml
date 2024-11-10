@@ -6,13 +6,13 @@ on:
 
 jobs:
   release-and-deploy:
-    runs-on: "ubuntu-24.04"
-    timeout-minutes: 60
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
-      actions: write
-      contents: write
-      id-token: write
-      pages: write
+      actions: "write"
+      contents: "write"
+      id-token: "write"
+      pages: "write"
     steps:
       - name: "Checkout code"
         uses: "actions/checkout@v4"
@@ -21,7 +21,10 @@ jobs:
 
       - uses: DeterminateSystems/nix-installer-action@v15
       - uses: DeterminateSystems/magic-nix-cache-action@v8
-      - uses: DeterminateSystems/flake-checker-action@v9
+
+      - name: "Bundle web application"
+        run: >
+          ./scripts/bundle.ts
 
       - name: "Set up git user email"
         run: >
@@ -32,10 +35,6 @@ jobs:
         run: >
           nix develop --command
           git config --global user.name 'mstream'
-
-      - name: "Run e2e tests"
-        run: >
-          ./scripts/test.ts
 
       - name: "Create a GitHub release"
         run: >

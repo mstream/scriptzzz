@@ -9,7 +9,10 @@
     "@wdio/repl": "npm:@wdio/repl@^9",
     "@wdio/spec-reporter": "npm:@wdio/spec-reporter@^9",
     "@wdio/visual-service": "npm:@wdio/visual-service@^6",
-    "esbuild": "npm:esbuild@~0.24"
+    "esbuild": "https://deno.land/x/esbuild@v0.24.0/mod.js" 
+  },
+  "lock": {
+    "frozen": true
   },
   "nodeModulesDir": "auto"
 }

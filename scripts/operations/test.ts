@@ -2,8 +2,13 @@ import { Launcher } from "@wdio/cli"
 import { repoDir } from "../common.ts"
 import { runRepoCommand } from "../common.ts"
 
+type Options = {
+  host: string,
+  port: number,
+}
+
 async function getWdioBrowserDependencyPath(name: string): Promise<string> {
-  return runRepoCommand(
+  return await runRepoCommand(
     "nix",
     "eval",
     "--raw",
@@ -11,7 +16,7 @@ async function getWdioBrowserDependencyPath(name: string): Promise<string> {
   );
 }
 
-export default async function({ host, port }): Promise<number | undefined> {
+export default async function({ host, port }: Options): Promise<number | undefined> {
   const confFilePath = `${repoDir}/wdio.conf.js`
   const baseUrl = `http://${host}:${port}`
   const options = { baseUrl }
@@ -23,6 +28,9 @@ export default async function({ host, port }): Promise<number | undefined> {
     "GECKODRIVER_BINARY_PATH",
     await getWdioBrowserDependencyPath("geckodriver")
   )
+  await runRepoCommand("deno", "check", "scripts")
+  await runRepoCommand("deno", "lint", "scripts")
+  await runRepoCommand("spago", "test")
   const wdio = new Launcher(confFilePath, options)
   return wdio.run()
 }

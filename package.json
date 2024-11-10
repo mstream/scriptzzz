@@ -1,6 +1,6 @@
 {
   "name": "scriptzzz",
-  "version": "2024.11.2",
+  "version": "2024.11.3",
   "dependencies": {
     "@codemirror/lang-javascript": "^6",
     "codemirror": "^6",

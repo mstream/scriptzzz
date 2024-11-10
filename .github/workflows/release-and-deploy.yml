@@ -9,6 +9,7 @@ jobs:
     runs-on: "ubuntu-24.04"
     timeout-minutes: 60
     permissions:
+      actions: write
       contents: write
       id-token: write
       pages: write

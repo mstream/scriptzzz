@@ -29,6 +29,7 @@ export const esbuildCommonBuildOptions: esbuild.BuildOptions = {
   absWorkingDir: repoDir,
   bundle: true,
   entryPoints: ["index.js"],
+  logLevel: "warning",
   logLimit: 0,
   outfile: "dist/index.js",
   platform: "browser",

@@ -1,6 +1,7 @@
 {
   "version": "4",
   "specifiers": {
+    "jsr:@std/async@1": "1.0.8",
     "jsr:@std/path@1": "1.0.8",
     "npm:@codemirror/lang-javascript@6": "6.2.2_@codemirror+language@6.10.3_@codemirror+state@6.4.1_@codemirror+view@6.34.2_@lezer+common@1.2.3",
     "npm:@csmith/release-it-calver-plugin@2023.12.0": "2023.12.0_release-it@17.10.0",
@@ -23,9 +24,13 @@
     "npm:verror@1": "1.10.1",
     "npm:webdriver-image-comparison@7": "7.2.1",
     "npm:webdriver@9": "9.2.8",
-    "npm:webdriverio@9": "9.2.11"
+    "npm:webdriverio@9": "9.2.11",
+    "npm:ws@8": "8.18.0"
   },
   "jsr": {
+    "@std/async@1.0.8": {
+      "integrity": "c057c5211a0f1d12e7dcd111ab430091301b8d64b4250052a79d277383bc3ba7"
+    },
     "@std/path@1.0.8": {
       "integrity": "548fa456bb6a04d3c1a1e7477986b6cffbce95102d0bb447c67c4ee70e0364be"
     }
@@ -4014,6 +4019,7 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@std/async@1",
       "jsr:@std/path@1",
       "npm:@wdio/cli@9",
       "npm:@wdio/globals@9",
@@ -4022,7 +4028,8 @@
       "npm:@wdio/mocha-framework@9",
       "npm:@wdio/repl@9",
       "npm:@wdio/spec-reporter@9",
-      "npm:@wdio/visual-service@6"
+      "npm:@wdio/visual-service@6",
+      "npm:ws@8"
     ],
     "packageJson": {
       "dependencies": [

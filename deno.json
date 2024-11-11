@@ -1,5 +1,6 @@
 {
   "imports": {
+    "@std/async": "jsr:@std/async@^1",
     "@std/path": "jsr:@std/path@^1",
     "@wdio/cli": "npm:@wdio/cli@^9",
     "@wdio/globals": "npm:@wdio/globals@^9",
@@ -9,7 +10,9 @@
     "@wdio/repl": "npm:@wdio/repl@^9",
     "@wdio/spec-reporter": "npm:@wdio/spec-reporter@^9",
     "@wdio/visual-service": "npm:@wdio/visual-service@^6",
-    "esbuild": "https://deno.land/x/esbuild@v0.24.0/mod.js" 
+    "esbuild": "https://deno.land/x/esbuild@v0.24.0/mod.js",
+    "ws": "npm:ws@^8"
+
   },
   "lock": {
     "frozen": true
